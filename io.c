@@ -2,43 +2,78 @@
 #include <stdlib.h>
 #include <string.h>
 #include "graph.h"
+#include <ctype.h>
+
+
+
+// Funkcja pomocnicza: zamienia przecinki na kropki i usuwa spacje 
+void sanitize_line(char *s) {
+    for (int i = 0; s[i]; i++) {
+        if (s[i] == ',') s[i] = '.'; // Zamiana separatora dziesiętnego
+    }
+}
 
 int read_graph(Graph *g, const char *filename) {
     FILE *f = fopen(filename, "r");
     if (!f) return -1;
 
-    char edge_name[50];
-    int u, v;
-    double w;
-    
-    // Alokacja pamięci
-    g->edges = malloc(1000 * sizeof(Edge)); 
+    g->edges = malloc(1000 * sizeof(Edge));
     g->nodes = malloc(1000 * sizeof(Node));
     g->edge_count = 0;
     g->node_count = 0;
 
-    // Czytanie formatu: nazwa;u;v;waga
-    // %[^;] czyta wszystko aż do średnika
-    while (fscanf(f, " %[^;];%d;%d;%lf", edge_name, &u, &v, &w) == 4) {
-        g->edges[g->edge_count].u_idx = u - 1; 
-        g->edges[g->edge_count].v_idx = v - 1;
-        g->edges[g->edge_count].weight = w;
-        g->edge_count++;
+    char line[256];
+    int line_num = 0;
+    int auto_fixed = 0;
+
+    printf("\n--- STATUS WCZYTYWANIA ---\n");
+
+    while (fgets(line, sizeof(line), f)) {
+        line_num++;
         
-        if (u > g->node_count) g->node_count = u;
-        if (v > g->node_count) g->node_count = v;
+        // 1. Ignorowanie pustych linii
+        if (strlen(line) <= 1 || line[0] == '\n') continue;
+
+        // 2. Wykrywanie separatora (średnik vs przecinek)
+        char separator = ';';
+        if (strchr(line, ';') == NULL && strchr(line, ',') != NULL) {
+            separator = ',';
+            printf("  [Wskazówka] Linia %d: Wykryto przecinki zamiast średników. Próbuję przetworzyć...\n", line_num);
+        }
+
+        // 3. Czyszczenie (Sanitizing)
+        sanitize_line(line);
+
+        // 4. Parsowanie
+        char name[50];
+        int u, v;
+        double w;
+        
+        // Budujemy format parsowania w zależności od wykrytego separatora
+        char format_str[50];
+        sprintf(format_str, " %%[^%c]%c%%d%c%%d%c%%lf", separator, separator, separator, separator);
+
+        if (sscanf(line, format_str, name, &u, &v, &w) == 4) {
+            g->edges[g->edge_count].u_idx = u - 1;
+            g->edges[g->edge_count].v_idx = v - 1;
+            g->edges[g->edge_count].weight = w;
+            g->edge_count++;
+            
+            if (u > g->node_count) g->node_count = u;
+            if (v > g->node_count) g->node_count = v;
+        } else {
+            printf("  [BŁĄD] Linia %d: Niepoprawny format danych. Pominięto.\n", line_num);
+        }
     }
 
-    // Inicjalizacja pozycji (wymagana dla stabilności algorytmów)
-    for(int i=0; i < g->node_count; i++) {
-        g->nodes[i].x = 0.0; 
-        g->nodes[i].y = 0.0;
-        g->nodes[i].id = i + 1;
-    }
+    printf("\nPodsumowanie:\n - Wczytano poprawnie: %d krawędzi.\n", g->edge_count);
+    printf(" - Przeanalizowano linii: %d.\n", line_num);
+    printf("---------------------------\n");
 
     fclose(f);
     return 0;
 }
+
 
 int save_graph(Graph *g, const char *filename, const char *format) {
     FILE *f = fopen(filename, "w");
