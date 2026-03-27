@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -58,16 +57,37 @@ int main(int argc, char *argv[]) {
     };
 
     // 3. Sterowanie przepływem programu
-    
-    // KROK A: Wczytywanie danych (używając io.c )
+
+    // Etap walidacji (pokazuje tabelę poprawek i czeka na ENTER)
+    int status = validate_and_process(input_path);
+
+    if (status == -1) {
+        // Tu program wpada, gdy są BŁĘDY KRYTYCZNE - nie ma opcji kliknięcia Enter
+        fprintf(stderr, "\n[PRZERWANO] Plik zawiera bledy uniemozliwiajace procesowanie.\n");
+        return 10; 
+    }
+
+    // KROK 2: Wczytywanie danych do pamięci (wykonywane po ENTER w kroku 1)
     printf("Wczytywanie grafu z: %s...\n", input_path);
     if (read_graph(&g, input_path) != 0) { 
-         fprintf(stderr, "Błąd: Nie udało się wczytać grafu.\n");
+        fprintf(stderr, "Nieoczekiwany blad przy wczytywaniu danych do pamieci.\n");
         return 2;
-     }
+    }
+
+    // Dodatkowe zabezpieczenie po wczytaniu
+    if (g.edge_count == 0) {
+        fprintf(stderr, "\n[BŁĄD] Plik nie zawiera żadnych poprawnych krawędzi!\n");
+        free_graph(&g);
+        return 5;
+    }
 
    // KROK B: Wybór i uruchomienie algorytmu
     if (strcmp(algorithm, "tutte") == 0) {
+        if (g.node_count < 3) {
+            fprintf(stderr, "Blad: Algorytm Tutte wymaga co najmniej 3 wierzcholkow!\n");
+            free_graph(&g);
+            return 6;
+        }
         printf("Uruchamianie metody barycentrycznej (Tutte)...\n");
         compute_tutte_layout(&g); 
     } 
@@ -85,6 +105,7 @@ int main(int argc, char *argv[]) {
     printf("Zapisywanie wyników w formacie %s do: %s...\n", format, output_path);
      if (save_graph(&g, output_path, format) != 0) {
          fprintf(stderr, "Błąd: Nie udało się zapisać wyników.\n");
+         free_graph(&g);
          return 4;
      }
 
