@@ -11,14 +11,16 @@ int read_graph(Graph *g, const char *filename) {
     int u, v;
     double w;
     
-    // Prosta alokacja na start (można rozbudować o dynamiczne realloc)
+    // Alokacja pamięci
     g->edges = malloc(1000 * sizeof(Edge)); 
     g->nodes = malloc(1000 * sizeof(Node));
     g->edge_count = 0;
     g->node_count = 0;
 
-    while (fscanf(f, "%s %d %d %lf", edge_name, &u, &v, &w) == 4) {
-        g->edges[g->edge_count].u_idx = u - 1; // Mapowanie na indeksy 0..n-1
+    // Czytanie formatu: nazwa;u;v;waga
+    // %[^;] czyta wszystko aż do średnika
+    while (fscanf(f, " %[^;];%d;%d;%lf", edge_name, &u, &v, &w) == 4) {
+        g->edges[g->edge_count].u_idx = u - 1; 
         g->edges[g->edge_count].v_idx = v - 1;
         g->edges[g->edge_count].weight = w;
         g->edge_count++;
@@ -27,9 +29,11 @@ int read_graph(Graph *g, const char *filename) {
         if (v > g->node_count) g->node_count = v;
     }
 
-    // Inicjalizacja pozycji wierzchołków na 0,0 przed algorytmem
+    // Inicjalizacja pozycji (wymagana dla stabilności algorytmów)
     for(int i=0; i < g->node_count; i++) {
-        g->nodes[i].x = 0; g->nodes[i].y = 0;
+        g->nodes[i].x = 0.0; 
+        g->nodes[i].y = 0.0;
+        g->nodes[i].id = i + 1;
     }
 
     fclose(f);
@@ -40,8 +44,9 @@ int save_graph(Graph *g, const char *filename, const char *format) {
     FILE *f = fopen(filename, "w");
     if (!f) return -1;
 
+    // Zapisujemy zgodnie ze specyfikacją projektu: <wierzchołek> <x> <y>
     for (int i = 0; i < g->node_count; i++) {
-        fprintf(f, "%d %.2f %.2f\n", i + 1, g->nodes[i].x, g->nodes[i].y);
+        fprintf(f, "%d %.2f %.2f\n", g->nodes[i].id, g->nodes[i].x, g->nodes[i].y);
     }
 
     fclose(f);

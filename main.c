@@ -3,11 +3,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <getopt.h>  // Do optarg;
+#include <getopt.h>  // Do optarg
 #include "graph.h"
 #include "layout_tutte.h"
-// #include "layout_fruchterman.h" // Moduł Oli
-// #include "io.h"                 // Moduł Oli
+#include "fruchterman.h"
+#include "io.h"                 
 
 void print_usage(char *prog_name) {
     printf("Użycie: %s -i <wejście.txt> -o <wyjście> -a <tutte|fruchterman> [-f <txt|bin>]\n", prog_name);
@@ -59,38 +59,39 @@ int main(int argc, char *argv[]) {
 
     // 3. Sterowanie przepływem programu
     
-    // KROK A: Wczytywanie danych (używając io.c Oli)
+    // KROK A: Wczytywanie danych (używając io.c )
     printf("Wczytywanie grafu z: %s...\n", input_path);
-    // if (read_graph(&g, input_path) != 0) { 
-    //     fprintf(stderr, "Błąd: Nie udało się wczytać grafu.\n");
-    //     return 2;
-    // }
+    if (read_graph(&g, input_path) != 0) { 
+         fprintf(stderr, "Błąd: Nie udało się wczytać grafu.\n");
+        return 2;
+     }
 
-    // KROK B: Wybór i uruchomienie algorytmu
+   // KROK B: Wybór i uruchomienie algorytmu
     if (strcmp(algorithm, "tutte") == 0) {
         printf("Uruchamianie metody barycentrycznej (Tutte)...\n");
-        compute_tutte_layout(&g); // Twoja funkcja z layout_tutte.c
+        compute_tutte_layout(&g); 
     } 
     else if (strcmp(algorithm, "fruchterman") == 0) {
-        printf("Uruchamianie modelu siłowego (Fruchterman-Reingold)...\n");
-        // compute_fruchterman_layout(&g); // Funkcja Oli
+        printf("Inicjalizacja losowych pozycji i uruchamianie modelu siłowego...\n");
+        init_random_positions(&g); // Musisz to dodać przed algorytmem!
+        run_fruchterman_reingold(&g, 100, 10.0); // 100 iteracji, temp 10.0
     } 
     else {
-        fprintf(stderr, "Błąd: Nieznany algorytm '%s'. Wybierz 'tutte' lub 'fruchterman'.\n", algorithm);
+        fprintf(stderr, "Błąd: Nieznany algorytm '%s'.\n", algorithm);
         return 3;
     }
 
-    // KROK C: Zapis wyników (używając io.c Oli)
+    // KROK C: Zapis wyników (używając io.c)
     printf("Zapisywanie wyników w formacie %s do: %s...\n", format, output_path);
-    // if (save_graph(&g, output_path, format) != 0) {
-    //     fprintf(stderr, "Błąd: Nie udało się zapisać wyników.\n");
-    //     return 4;
-    // }
+     if (save_graph(&g, output_path, format) != 0) {
+         fprintf(stderr, "Błąd: Nie udało się zapisać wyników.\n");
+         return 4;
+     }
 
     printf("Sukces! Program zakończył działanie.\n");
 
     // Zwolnienie pamięci (wspólna odpowiedzialność)
-    // free_graph(&g); 
+     free_graph(&g); 
 
     return 0;
 }
