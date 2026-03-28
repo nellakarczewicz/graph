@@ -57,7 +57,7 @@ void init_random_positions(Graph *graph) {
  * @param temp_start temperatura początkowa
  * Zwraca: void
  */
-void run_fruchterman_reingold(Graph *graph, int iterations, double temp_start) {
+void run_fruchterman(Graph *graph, int iterations, double temp_start) {
     double area = graph->width * graph->height; // Oblicza pole powierzchni rysowania
     double k = sqrt(area / graph->node_count); // Oblicza idealną odległość między wierzchołkami
     double t = temp_start; // Aktualna temperatura
@@ -100,14 +100,15 @@ void run_fruchterman_reingold(Graph *graph, int iterations, double temp_start) {
             if (dist < 0.01) dist = 0.01;
 
             double force = force_attraction(dist, k); // Oblicza siłę przyciągania
+            // Kierunek wektora siły
             double fx = (vx / dist) * force; // siła składowa X
             double fy = (vy / dist) * force; // siła składowa Y
 
             // Przesuwamy oba końce ku sobie, U odejmujemy, V dodajemy
             // (siły działają w przeciwnych kierunkach)
-            graph->nodes[u].dx -= fx;
+            graph->nodes[u].dx -= fx; // u przesuwa się w stronę v
             graph->nodes[u].dy -= fy;
-            graph->nodes[v].dx += fx;
+            graph->nodes[v].dx += fx; // v przesuwa się w stronę u
             graph->nodes[v].dy += fy;
         }
 

@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
     else if (strcmp(algorithm, "fruchterman") == 0) {
         printf("Inicjalizacja losowych pozycji i uruchamianie modelu siłowego...\n");
         init_random_positions(&g); // Musisz to dodać przed algorytmem!
-        run_fruchterman_reingold(&g, 100, 10.0); // 100 iteracji, temp 10.0
+        run_fruchterman(&g, 100, 10.0); // 100 iteracji, temp 10.0
     } 
     else {
         fprintf(stderr, "Błąd: Nieznany algorytm '%s'.\n", algorithm);

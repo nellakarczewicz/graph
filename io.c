@@ -86,11 +86,21 @@ int read_graph(Graph *g, const char *filename) {
     FILE *f = fopen(filename, "r");
     if (!f) return -1;
 
-    // Używamy calloc, aby wyzerować dx, dy i inne pola
+    // Alokujemy pamięć na krawędzie
     g->edges = malloc(1000 * sizeof(Edge));
+    // Alokujemy pamięć na wierzchołki (max 1000 unikalnych wierzchołków)
+    // Używamy calloc, aby wyzerować dx, dy i inne pola
     g->nodes = calloc(1000, sizeof(Node));
+
+    if (!g->edges || !g->nodes) {
+        if (f) fclose(f);
+        return -2;
+    }
     
-    if (!g->edges || !g->nodes) return -2;
+    // Tablica mapująca: id_map[ID_Z_PLIKU] = INDEKS_W_TABLICY_NODES
+    // Inicjalizujemy -1, co oznacza "jeszcze nie widziałem tego ID"
+    int id_map[10001]; 
+    for(int i=0; i<10001; i++) id_map[i] = -1;
 
     g->edge_count = 0;
     g->node_count = 0;
@@ -108,8 +118,8 @@ int read_graph(Graph *g, const char *filename) {
         if (strlen(line) <= 1 || line[0] == '\n') continue;
 
         // 2. Wykrywanie separatora (średnik vs przecinek)
-        char separator = ';';
-        if (strchr(line, ';') == NULL && strchr(line, ',') != NULL) {
+        char separator = detect_separator(line);
+        if (separator == ',') {
             printf("  [Wskazówka] Linia %d: Wykryto przecinki zamiast średników. Próbuję przetworzyć...\n", line_num);
         }
 
@@ -117,29 +127,47 @@ int read_graph(Graph *g, const char *filename) {
         sanitize(line);
 
         // 4. Parsowanie
-        int u, v;
+        int u_id, v_id;
         double w;
         // Budujemy format parsowania w zależności od wykrytego separatora
         char format_str[50];
-        sprintf(format_str, " %%[^%c]%c%%d%c%%d%c%%lf", separator, separator, separator, separator);
+        // Dodanie ogranicznika 49 dla bezpieczeństwa
+        sprintf(format_str, " %%49[^%c]%c%%d%c%%d%c%%lf", separator, separator, separator, separator);
 
-        if (sscanf(line, format_str, name, &u, &v, &w) == 4) {
+        if (sscanf(line, format_str, name, &u_id, &v_id, &w) == 4) {
+            // ZABEZPIECZENIE: sprawdzamy czy ID z pliku nie wykracza poza zakres mapy
+            if (u_id < 0 || u_id >= 10000 || v_id < 0 || v_id >= 10000) continue;
+
+            // Mapujemy wierzchołek U
+            if (id_map[u_id] == -1) {
+                if (g->node_count >= 1000) continue; // Osiągnięto limit 1000 wierzchołków
+                id_map[u_id] = g->node_count;
+                g->nodes[g->node_count].id = u_id;
+                g->node_count++;
+            }
+
+            // Mapujemy wierzchołek V
+            if (id_map[v_id] == -1) {
+                if (g->node_count >= 1000) continue;
+                id_map[v_id] = g->node_count;
+                g->nodes[g->node_count].id = v_id;
+                g->node_count++;
+            }
+            
+            // Dodajemy krawędź używając ciągłych indeksów (0, 1, 2...)
             // Rezerwowe zabezpieczenie przed wyjściem poza 1000
             if (g->edge_count < 1000) {
-                g->edges[g->edge_count].u_idx = u - 1;
-                g->edges[g->edge_count].v_idx = v - 1;
+                g->edges[g->edge_count].u_idx = id_map[u_id];
+                g->edges[g->edge_count].v_idx = id_map[v_id];
                 g->edges[g->edge_count].weight = w;
                 g->edge_count++;
             
-                if (u > g->node_count) g->node_count = u;
-                if (v > g->node_count) g->node_count = v;
             } 
         } else {
             printf("  [BŁĄD] Linia %d: Niepoprawny format danych. Pominięto.\n", line_num);
         }
     }
 
-    for (int i = 0; i < g->node_count; i++) g->nodes[i].id = i + 1;
 
     printf("\nPodsumowanie:\n - Wczytano poprawnie: %d krawędzi.\n", g->edge_count);
     printf(" - Przeanalizowano linii: %d.\n", line_num);
