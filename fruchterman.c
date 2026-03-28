@@ -6,6 +6,48 @@
 // --- Implementacja funkcji pomocniczych ---
 
 /**
+ * Funkcja pomocnicza: sprawdza, czy punkty są ułożone przeciwnie do ruchu wskazówek zegara.
+ * Wykorzystywana do detekcji przecięć odcinków.
+ */
+int ccw(double ax, double ay, double bx, double by, double cx, double cy) {
+    return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax);
+}
+
+/**
+ * Czy dwa odcinki (krawędzie) się przecinają?
+ * Implementacja algorytmu opartego na orientacji punktów (CCW).
+ */
+int intersect(double x1, double y1, double x2, double y2, 
+              double x3, double y3, double x4, double y4) {
+    return ccw(x1, y1, x3, y3, x4, y4) != ccw(x2, y2, x3, y3, x4, y4) &&
+           ccw(x1, y1, x2, y2, x3, y3) != ccw(x1, y1, x2, y2, x4, y4);
+}
+
+/**
+ * Funkcja sprawdzająca planarność grafu w algorytmie Fruchtermana
+ * Wykorzystuje algorytm orientacji punktów (CCW) do detekcji kolizji odcinków.
+ * @param g wskaźnik na strukturę Graph zawierającą aktualne współrzędne wierzchołków i listę krawędzi
+ * Zwraca: int (1 jeśli układ jest planarny - brak przecięć, 0 w przypadku znalezienia chociaż jednego przecięcia)
+ */
+int is_layout_planar(Graph *g) {
+    for (int i = 0; i < g->edge_count; i++) {
+        for (int j = i + 1; j < g->edge_count; j++) {
+            int u1 = g->edges[i].u_idx, v1 = g->edges[i].v_idx;
+            int u2 = g->edges[j].u_idx, v2 = g->edges[j].v_idx;
+
+            // Pomiń krawędzie dzielące wspólny wierzchołek (one zawsze się stykają w końcach)
+            if (u1 == u2 || u1 == v2 || v1 == u2 || v1 == v2) continue;
+
+            if (intersect(g->nodes[u1].x, g->nodes[u1].y, g->nodes[v1].x, g->nodes[v1].y,
+                          g->nodes[u2].x, g->nodes[u2].y, g->nodes[v2].x, g->nodes[v2].y)) {
+                return 0; // Znaleziono przecięcie!
+            }
+        }
+    }
+    return 1; // Brak przecięć - sukces!
+}
+
+/**
  * Funkcja obliczająca siłę przyciągania (attractive force)
  * f_a(d) = d^2 / k
  * @param dist odległość geometryczna między dwoma wierzchołkami w danym momencie symulacji
@@ -62,12 +104,25 @@ void run_fruchterman(Graph *graph, int iterations, double temp_start) {
     double k = sqrt(area / graph->node_count); // Oblicza idealną odległość między wierzchołkami
     double t = temp_start; // Aktualna temperatura
 
+    // Definiujemy parametry grawitacji raz przed pętlami
+    double gravity = 0.05;
+    double centerX = graph->width / 2.0;
+    double centerY = graph->height / 2.0;
+
     for (int iter = 0; iter < iterations; iter++) {
         
-        // 1. ODPYCHANIE: Każdy wierzchołek odpycha się od każdego innego
+        // 1. ODPYCHANIE: Każdy wierzchołek odpycha się od każdego innego; + GRAWITACJA
         for (int i = 0; i < graph->node_count; i++) {
             graph->nodes[i].dx = 0; // Resetuje siłę X dla tego wierzchołka
             graph->nodes[i].dy = 0; // Resetuje siłę Y dla tego wierzchołka
+
+            // Grawitacja
+            // Obliczamy wektor od wierzchołka do środka ekranu
+            double dx_center = centerX - graph->nodes[i].x;
+            double dy_center = centerY - graph->nodes[i].y;
+            // Dodajemy siłę grawitacji do wektora przesunięcia
+            graph->nodes[i].dx += dx_center * gravity;
+            graph->nodes[i].dy += dy_center * gravity;
 
             for (int j = 0; j < graph->node_count; j++) {
                 if (i == j) continue; // Wierzchołek nie odpycha samego siebie

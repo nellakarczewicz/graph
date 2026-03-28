@@ -81,6 +81,8 @@ int main(int argc, char *argv[]) {
         return 5;
     }
 
+    int success = 0; // Flaga sukcesu dla całego procesu
+
    // KROK B: Wybór i uruchomienie algorytmu
     if (strcmp(algorithm, "tutte") == 0) {
         if (g.node_count < 3) {
@@ -90,11 +92,42 @@ int main(int argc, char *argv[]) {
         }
         printf("Uruchamianie metody barycentrycznej (Tutte)...\n");
         compute_tutte_layout(&g); 
+        success = 1; // Tutte z definicji (dla spójnych) jest sukcesem
     } 
     else if (strcmp(algorithm, "fruchterman") == 0) {
-        printf("Inicjalizacja losowych pozycji i uruchamianie modelu siłowego...\n");
-        init_random_positions(&g); // Musisz to dodać przed algorytmem!
-        run_fruchterman(&g, 100, 10.0); // 100 iteracji, temp 10.0
+        // Walidacja planarności
+        if (!is_potentially_planar(&g)) {
+            fprintf(stderr, "\nBŁĄD: Graf ma za dużo krawędzi (%d) dla %d wierzchołków.\n", 
+                    g.edge_count, g.node_count);
+            fprintf(stderr, "BŁĄD: Graf matematycznie nieplanarny (złamanie wzoru Eulera E <= 3V-6). Przerwanie działania programu.\n");
+            free_graph(&g);
+            return 7;
+        }
+
+        int attempts = 0;
+        int max_attempts = 3000; // Bezpiecznik, żeby nie zapętlić się na wieczność
+
+        printf("Inicjalizacja losowych pozycji i uruchamianie modelu siłowego (Fruchterman)...\n");
+        printf("Szukanie planarnego ułożenia...\n");
+
+        while (!success && attempts < max_attempts) {
+            attempts++;
+            init_random_positions(&g); // Każda próba zaczyna się od innego losowego rozstawienia
+            run_fruchterman(&g, 1000, 50.0); // 500 iteracji, temp 10.0
+            
+            if (is_layout_planar(&g)) {
+                success = 1;
+            }
+        }
+
+        if (success) {
+            printf("Sukces! Wygenerowano graf planarny po %d próbach.\n", attempts);
+        } else {
+            printf("Nie udało się rozplątać grafu po %d próbach.", attempts);
+            fprintf(stderr, "Spróbuj uruchomić program ponownie lub zmień dane wejściowe.\n");
+            // Nie ustawiamy algorithm_success, więc zapis zostanie pominięty
+        }
+        
     } 
     else {
         fprintf(stderr, "Błąd: Nieznany algorytm '%s'.\n", algorithm);
@@ -102,17 +135,20 @@ int main(int argc, char *argv[]) {
     }
 
     // KROK C: Zapis wyników (używając io.c)
-    printf("Zapisywanie wyników w formacie %s do: %s...\n", format, output_path);
-     if (save_graph(&g, output_path, format) != 0) {
-         fprintf(stderr, "Błąd: Nie udało się zapisać wyników.\n");
-         free_graph(&g);
-         return 4;
-     }
-
-    printf("Sukces! Program zakończył działanie.\n");
+    if (success) {
+        printf("\nZapisywanie wyników w formacie %s do: %s...\n", format, output_path);
+        if (save_graph(&g, output_path, format) != 0) {
+            fprintf(stderr, "Błąd: Nie udało się zapisać wyników.\n");
+            free_graph(&g);
+            return 4;
+        }
+        printf("Sukces! Program zakończył działanie.\n");
+    } else {
+        printf("Zapis został anulowany z powodu braku planarnego ułożenia.\n");
+    }
 
     // Zwolnienie pamięci (wspólna odpowiedzialność)
      free_graph(&g); 
 
-    return 0;
+    return success ? 0 : 8; // Zwracamy błąd 8, jeśli nie było sukcesu
 }

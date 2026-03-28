@@ -23,4 +23,9 @@ int save_graph(Graph *g, const char *filename, const char *format);
  */
 void free_graph(Graph *g);
 
+/**
+ * Zapewnia planarność dla algorytmu Fruchtermana.
+ */
+int is_potentially_planar(Graph *g);
+
 #endif

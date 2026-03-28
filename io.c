@@ -82,6 +82,27 @@ int validate_and_process(const char *filename) {
     return 0; // Można kontynuować
 }
 
+/**
+ * Funkcja sprawdzająca teoretyczną planarność grafu (warunek konieczny) w algorytmie Fruchtermana
+ * Wykorzystuje twierdzenie Eulera dla grafów planarnych, sprawdzając zależność między liczbą krawędzi
+ * a liczbą wierzchołków (E <= 3V - 6).
+ * @param g wskaźnik na strukturę Graph zawierającą aktualne współrzędne wierzchołków i listę krawędzi
+ * Zwraca: int (1 jeśli graf spełnia warunek i może być planarny, 0 jeśli liczba krawędzi 
+ * wyklucza planarność bez względu na ułożenie wierzchołków)
+ */
+int is_potentially_planar(Graph *g) {
+    // Grafy z 0, 1 lub 2 wierzchołkami są zawsze planarne
+    if (g->node_count <= 2) return 1; 
+    
+    // Wzór Eulera dla grafów planarnych prostych: E <= 3V - 6
+    int max_edges = 3 * g->node_count - 6;
+    
+    if (g->edge_count > max_edges) {
+        return 0; // Za dużo krawędzi -> na pewno nie jest planarny
+    }
+    return 1; // Może być planarny
+}
+
 int read_graph(Graph *g, const char *filename) {
     FILE *f = fopen(filename, "r");
     if (!f) return -1;

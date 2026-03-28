@@ -40,4 +40,6 @@ double force_attraction(double dist, double k);
  */
 double force_repulsion(double dist, double k);
 
+int is_layout_planar(Graph *g);
+
 #endif
