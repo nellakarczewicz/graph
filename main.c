@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <getopt.h>  // Do optarg
+#include <time.h> // do srand
 #include "graph.h"
 #include "layout_tutte.h"
 #include "fruchterman.h"
@@ -18,6 +19,7 @@ void print_usage(char *prog_name) {
 }
 
 int main(int argc, char *argv[]) {
+    srand(time(NULL)); // Inicjalizacja ziarna
     int opt;
     char *input_path = NULL;
     char *output_path = NULL;
@@ -95,7 +97,7 @@ int main(int argc, char *argv[]) {
         success = 1; // Tutte z definicji (dla spójnych) jest sukcesem
     } 
     else if (strcmp(algorithm, "fruchterman") == 0) {
-        // Walidacja planarności
+        // 1. Sprawdzenie matematycznej planarności (warunek E <= 3V-6)
         if (!is_potentially_planar(&g)) {
             fprintf(stderr, "\nBŁĄD: Graf ma za dużo krawędzi (%d) dla %d wierzchołków.\n", 
                     g.edge_count, g.node_count);
@@ -104,28 +106,35 @@ int main(int argc, char *argv[]) {
             return 7;
         }
 
+        // 2. Sprawdzenie spójności
+        if (!is_graph_connected(&g)) {
+            fprintf(stderr, "BŁĄD: Graf nie jest spójny! Algorytm wymaga spójności.\n");
+            free_graph(&g);
+            return 9; // Nowy kod błędu dla braku spójności
+        }
+
         int attempts = 0;
         int max_attempts = 3000; // Bezpiecznik, żeby nie zapętlić się na wieczność
 
         printf("Inicjalizacja losowych pozycji i uruchamianie modelu siłowego (Fruchterman)...\n");
-        printf("Szukanie planarnego ułożenia...\n");
+        printf("Szukanie planarnego i spójnego ułożenia...\n");
 
         while (!success && attempts < max_attempts) {
             attempts++;
             init_random_positions(&g); // Każda próba zaczyna się od innego losowego rozstawienia
-            run_fruchterman(&g, 1000, 50.0); // 500 iteracji, temp 10.0
+            run_fruchterman(&g, 1000, 30.0); // 1000 iteracji, temp 30.0
             
+            // Sprawdzamy, czy ułożenie jest planarne (fizycznie brak przecięć)
             if (is_layout_planar(&g)) {
                 success = 1;
             }
         }
 
         if (success) {
-            printf("Sukces! Wygenerowano graf planarny po %d próbach.\n", attempts);
+            printf("\nSukces! Wygenerowano graf planarny i spójny po %d próbach.\n", attempts);
         } else {
-            printf("Nie udało się rozplątać grafu po %d próbach.", attempts);
+            printf("\n[NIEPOWODZENIE]Nie udało się rozplątać grafu po %d próbach.", attempts);
             fprintf(stderr, "Spróbuj uruchomić program ponownie lub zmień dane wejściowe.\n");
-            // Nie ustawiamy algorithm_success, więc zapis zostanie pominięty
         }
         
     } 

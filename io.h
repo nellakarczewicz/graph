@@ -28,4 +28,11 @@ void free_graph(Graph *g);
  */
 int is_potentially_planar(Graph *g);
 
+/**
+ * Funkcja sprawdzająca spójność grafu za pomocą prostego algorytmu przeszukiwania (BFS/DFS).
+ * @param g wskaźnik na strukturę Graph
+ * Zwraca: 1 jeśli graf jest spójny, 0 w przeciwnym razie.
+ */
+int is_graph_connected(Graph *g);
+
 #endif

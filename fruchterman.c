@@ -1,7 +1,6 @@
 #include "fruchterman.h" // dołączenie pliku nagłówkowego z deklaracjami funkcji
 #include <math.h> // do sqrt()
 #include <stdlib.h> // do rand()
-#include <time.h> // do time()
 
 // --- Implementacja funkcji pomocniczych ---
 
@@ -72,12 +71,16 @@ double force_repulsion(double dist, double k) {
 /**
  * Funkcja pomocnicza do inicjalizacji pozycji wierzchołków.
  * Rozmieszcza wierzchołki losowo wewnątrz obszaru zdefiniowanego w Graph.
- * Powinna być wywołana raz przed pętlą algorytmu.
+ * Zamiast losować po całym ekranie, startujemy ze środka.
+ * To zapewnia, że graf "rośnie" ze wspólnego punktu, co trzyma go w spójności.
  * @param graph wskaźnik na strukturę przechowującą wierzchołki i krawędzie
  * Zwraca: void
  */
 void init_random_positions(Graph *graph) {
-    srand(time(NULL)); // Inicjalizacja generatora liczb losowych
+    double centerX = graph->width / 2.0;
+    double centerY = graph->height / 2.0;
+    
+    // Inicjalizacja generatora powinna być w main, ale upewniamy się tutaj
     for (int i = 0; i < graph->node_count; i++) {
         // Losuje X od 0 do szerokości obszaru
         graph->nodes[i].x = (double)rand() / RAND_MAX * graph->width;
@@ -116,7 +119,7 @@ void run_fruchterman(Graph *graph, int iterations, double temp_start) {
             graph->nodes[i].dx = 0; // Resetuje siłę X dla tego wierzchołka
             graph->nodes[i].dy = 0; // Resetuje siłę Y dla tego wierzchołka
 
-            // Grawitacja
+            // Grawitacja - działa na każdy wierzchołek niezależnie od krawędzi
             // Obliczamy wektor od wierzchołka do środka ekranu
             double dx_center = centerX - graph->nodes[i].x;
             double dy_center = centerY - graph->nodes[i].y;

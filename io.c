@@ -5,7 +5,46 @@
 #include <ctype.h>
 #include "io.h"
 
+/**
+ * Funkcja sprawdzająca spójność grafu za pomocą prostego algorytmu przeszukiwania (DFS).
+ * @param g wskaźnik na strukturę Graph
+ * Zwraca: 1 jeśli graf jest spójny, 0 w przeciwnym razie.
+ */
+int is_graph_connected(Graph *g) {
+    if (g->node_count == 0) return 1;
+    if (g->node_count == 1) return 1;
 
+    int *visited = calloc(g->node_count, sizeof(int));
+    int *stack = malloc(g->node_count * sizeof(int));
+    int top = -1;
+
+    // Startujemy od pierwszego wierzchołka (indeks 0)
+    stack[++top] = 0;
+    visited[0] = 1;
+    int visited_count = 1;
+
+    while (top >= 0) {
+        int u = stack[top--];
+
+        // Szukamy sąsiadów wierzchołka u
+        for (int i = 0; i < g->edge_count; i++) {
+            int v = -1;
+            if (g->edges[i].u_idx == u) v = g->edges[i].v_idx;
+            else if (g->edges[i].v_idx == u) v = g->edges[i].u_idx;
+
+            if (v != -1 && !visited[v]) {
+                visited[v] = 1;
+                stack[++top] = v;
+                visited_count++;
+            }
+        }
+    }
+
+    free(visited);
+    free(stack);
+
+    return (visited_count == g->node_count);
+}
 
 // Funkcja pomocnicza: zamienia przecinki na kropki i usuwa spacje 
 int sanitize(char *s) {
