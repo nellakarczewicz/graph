@@ -1,0 +1,33 @@
+# Nazwa pliku wykonywalnego
+TARGET = program
+
+# Kompilator i flagi
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c11
+LDFLAGS = -lm
+
+# Lista plików źródłowych (.c) i obiektowych (.o)
+SRCS = main.c layout_tutte.c fruchterman.c io.c
+OBJS = $(SRCS:.c=.o)
+
+# Domyślna zasada: budowanie programu
+all: $(TARGET)
+
+# Linkowanie plików obiektowych w gotowy program
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET) $(LDFLAGS)
+
+# Kompilacja każdego pliku .c do .o
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Czyszczenie plików tymczasowych
+clean:
+	rm -f $(OBJS) $(TARGET)
+
+# Uruchomienie z przykładowymi parametrami (opcjonalnie)
+run_tutte: all
+	./$(TARGET) -i test.txt -o wynik.txt -a tutte
+
+run_fru: all
+	./$(TARGET) -i test.txt -o wynik.txt -a fruchterman
