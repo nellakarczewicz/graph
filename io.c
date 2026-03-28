@@ -67,24 +67,18 @@ int validate_and_process(const char *filename) {
 
     // SCENARIUSZ 1: Błędy uniemożliwiające start
     if (critical_errors > 0) {
-        printf("\nSTOP! Znaleziono %d bledow krytycznych.\n", critical_errors);
-        printf("Program nie moze kontynuowac. Popraw plik: %s\n", filename);
-        return -1; // Blokada w main.c
+        printf("\nSTOP! Znaleziono %d bledow krytycznych w strukturze pliku.\n", critical_errors);
+        return -1;
     }
 
     // SCENARIUSZ 2: Dane są poprawne technicznie - czekamy na decyzję użytkownika
-    if (total_fixes > 0) printf("UWAGA: Wykryto %d linii z poprawionym formatem.\n", total_fixes);
-    printf("Dane wygladaja na poprawne technicznie.\n");
-    printf("Czy chcesz uruchomic algorytmy dla powyzszych danych?\n");
-    printf("-> Nacisnij [ENTER] aby potwierdzic i kontynuowac.\n");
-    printf("-> Nacisnij [CTRL+C] aby anulowac.\n");
-
-
-    // Czyścimy bufor, dopóki nie trafimy na nową linię i czekamy
-    int c;
-    if ((c = getchar()) != '\n' && c != EOF) {
-        while ((c = getchar()) != '\n' && c != EOF);
+    if (total_fixes > 0) {
+        printf("INFO: Dane poprawne technicznie (dokonano %d autokorekt).\n", total_fixes);
+    } else {
+        printf("INFO: Dane poprawne technicznie.\n");
     }
+
+    printf("Uruchamiam przetwarzanie...\n");
     return 0; // Można kontynuować
 }
 
@@ -157,15 +151,32 @@ int read_graph(Graph *g, const char *filename) {
 
 
 int save_graph(Graph *g, const char *filename, const char *format) {
-    FILE *f = fopen(filename, "w");
-    if (!f) return -1;
+    if (strcmp(format, "bin") == 0) {
+        // --- ZAPIS BINARNY ---
+        FILE *f = fopen(filename, "wb");
+        if (!f) return -1;
 
-    // Zapisujemy zgodnie ze specyfikacją projektu: <wierzchołek> <x> <y>
-    for (int i = 0; i < g->node_count; i++) {
-        fprintf(f, "%d %.2f %.2f\n", g->nodes[i].id, g->nodes[i].x, g->nodes[i].y);
+        // Zapisujemy najpierw liczbę wierzchołków, żeby wiedzieć ile czytać
+        fwrite(&(g->node_count), sizeof(int), 1, f);
+        
+        // Zapisujemy całą tablicę struktur Node za jednym zamachem
+        fwrite(g->nodes, sizeof(Node), g->node_count, f);
+
+        fclose(f);
+        printf("Graf zapisany binarnie do: %s\n", filename);
+    } 
+    else {
+        // --- ZAPIS TEKSTOWY (Domyślny) ---
+        FILE *f = fopen(filename, "w");
+        if (!f) return -1;
+
+        // Zapisujemy zgodnie ze specyfikacją projektu: <wierzchołek> <x> <y>
+        for (int i = 0; i < g->node_count; i++) {
+            fprintf(f, "%d %.2f %.2f\n", g->nodes[i].id, g->nodes[i].x, g->nodes[i].y);
+        }
+        fclose(f);
+        printf("Graf zapisany tekstowo do: %s\n", filename);
     }
-
-    fclose(f);
     return 0;
 }
 

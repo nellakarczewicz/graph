@@ -58,16 +58,16 @@ int main(int argc, char *argv[]) {
 
     // 3. Sterowanie przepływem programu
 
-    // Etap walidacji (pokazuje tabelę poprawek i czeka na ENTER)
+    // Etap walidacji (pokazuje tabelę poprawek)
     int status = validate_and_process(input_path);
 
     if (status == -1) {
-        // Tu program wpada, gdy są BŁĘDY KRYTYCZNE - nie ma opcji kliknięcia Enter
+        // Tu program wpada, gdy są BŁĘDY KRYTYCZNE
         fprintf(stderr, "\n[PRZERWANO] Plik zawiera bledy uniemozliwiajace procesowanie.\n");
         return 10; 
     }
 
-    // KROK 2: Wczytywanie danych do pamięci (wykonywane po ENTER w kroku 1)
+    // KROK 2: Wczytywanie danych do pamięci
     printf("Wczytywanie grafu z: %s...\n", input_path);
     if (read_graph(&g, input_path) != 0) { 
         fprintf(stderr, "Nieoczekiwany blad przy wczytywaniu danych do pamieci.\n");
