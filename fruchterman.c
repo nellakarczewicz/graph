@@ -82,10 +82,10 @@ void init_random_positions(Graph *graph) {
     
     // Inicjalizacja generatora powinna być w main, ale upewniamy się tutaj
     for (int i = 0; i < graph->node_count; i++) {
-        // Losuje X od 0 do szerokości obszaru
-        graph->nodes[i].x = (double)rand() / RAND_MAX * graph->width;
-        // Losuje Y od 0 do wysokości obszaru
-        graph->nodes[i].y = (double)rand() / RAND_MAX * graph->height;
+        // Startujemy w małym obszarze 10x10 na środku
+        // Dzięki temu siły odpychania "wypchną" graf symetrycznie na zewnątrz
+        graph->nodes[i].x = (double)rand() / RAND_MAX * 10.0 - 5.0; // Losowanie X
+        graph->nodes[i].y = (double)rand() / RAND_MAX * 10.0 - 5.0; // Losowanie Y
         // Wyzerowuje wektory przesunięcia na start
         graph->nodes[i].dx = 0;
         graph->nodes[i].dy = 0;

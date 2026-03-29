@@ -5,5 +5,4 @@ Krawedz4;4;5;1,0
 Krawedz5;5;6;1.5
 Krawedz6;6;7;1.2
 Krawedz7;7;8;0.9
-Krawedz8;8;9;0.8
 Krawedz9;9;1;0.7

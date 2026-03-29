@@ -83,6 +83,20 @@ int main(int argc, char *argv[]) {
         return 5;
     }
 
+    // Sprawdzenie spójności (Kluczowy moment)
+    if (!is_graph_connected(&g)) {
+        printf("\n============================================================\n");
+        printf("   BŁĄD KRYTYCZNY: GRAF NIESPÓJNY    \n");
+        printf("============================================================\n");
+        printf("Dane z pliku wejściowego [%s] są błędne:\n", input_path);
+        printf("-> Graf składa się z kilku niepołączonych ze sobą części.\n");
+        printf("-> Algorytm wymaga grafu spójnego, aby poprawnie wyznaczyć pozycje.\n");
+        printf("============================================================\n");
+        
+        free_graph(&g);
+        return 9; // Zwracamy kod błędu 9 dla braku spójności
+    }
+
     int success = 0; // Flaga sukcesu dla całego procesu
 
    // KROK B: Wybór i uruchomienie algorytmu
@@ -104,13 +118,6 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "BŁĄD: Graf matematycznie nieplanarny (złamanie wzoru Eulera E <= 3V-6). Przerwanie działania programu.\n");
             free_graph(&g);
             return 7;
-        }
-
-        // 2. Sprawdzenie spójności
-        if (!is_graph_connected(&g)) {
-            fprintf(stderr, "BŁĄD: Graf nie jest spójny! Algorytm wymaga spójności.\n");
-            free_graph(&g);
-            return 9; // Nowy kod błędu dla braku spójności
         }
 
         int attempts = 0;
