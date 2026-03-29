@@ -16,7 +16,6 @@ void print_usage(char *prog_name) {
 int main(int argc, char *argv[]) {
     srand(time(NULL));
     int opt;
-    int success = 0;
     char *input_path = NULL;
     char *output_path = NULL;
     char *algorithm = "tutte";
@@ -64,7 +63,7 @@ int main(int argc, char *argv[]) {
         return 9; // Zwracamy kod błędu 9 dla braku spójności
     }
 
-    success = 0; // Flaga sukcesu dla całego procesu
+    int success = 0; // Flaga sukcesu dla całego procesu
 
     // --- LOGIKA WYBORU ALGORYTMU ---
     if (strcmp(algorithm, "tutte") == 0) {
@@ -75,7 +74,7 @@ int main(int argc, char *argv[]) {
         }
         compute_tutte_layout(&g); 
         if (is_tutte_layout_planar(&g)) {
-            printf("Sukces! Graf jest planarny (Tutte).\n");
+            printf("Sukces! Graf planarny (Tutte).\n");
             success = 1;
         } else {
             printf("[Ostrzeżenie] Graf Tutte'a ma przecięcia.\n");
@@ -84,13 +83,11 @@ int main(int argc, char *argv[]) {
     } 
     else if (strcmp(algorithm, "fruchterman") == 0) {
         if (!is_potentially_planar(&g)) {
+            printf("[INFO] Graf jest nieplanarny (E > 3V-6). Jeśli chcesz, aby program wygenerował graf planarny, to uruchom go ponownie.\n");
             free_graph(&g);
             return 7;
         }
-        if (!is_graph_connected(&g)) {
-            free_graph(&g);
-            return 9;
-        }
+
 
         int attempts = 0;
         while (!success && attempts < 3000) {

@@ -14,8 +14,14 @@ int is_graph_connected(Graph *g) {
 
     int *visited = calloc(g->node_count, sizeof(int));
     int *stack = malloc(g->node_count * sizeof(int));
-    int top = -1;
 
+    // Bezpieczeństwo pamięci - sprawdzenie alokacji w DFS
+    if (!visited || !stack) {
+        free(visited); free(stack);
+        return -1; 
+    }
+
+    int top = -1;
     stack[++top] = 0;
     visited[0] = 1;
     int visited_count = 1;
@@ -64,10 +70,8 @@ int validate_and_process(const char *filename) {
     FILE *f = fopen(filename, "r");
     if (!f) return -1;
 
-    char line[256], name[50];
+    char line[256];
     int line_num = 0, critical_errors = 0, total_fixes = 0;
-    int u, v;
-    double w;
 
     printf("\n============================================================\n");
     printf("   RAPORT ANALIZY DANYCH WEJSCIOWYCH    \n");
@@ -75,23 +79,35 @@ int validate_and_process(const char *filename) {
 
     while (fgets(line, sizeof(line), f)) {
         line_num++;
-        if (strlen(line) <= 1 || line[0] == '\n') continue;
-
-        u = -1; v = -1; w = -1.0; 
-        memset(name, 0, sizeof(name));
+        // POPRAWKA: Sprawdzanie czy linia jest pusta (same białe znaki)
+        int has_data = 0;
+        for(int i=0; line[i]; i++) {
+            if(!isspace((unsigned char)line[i])) { has_data = 1; break; }
+        }
+        if(!has_data) {
+            printf("%-7d | [INFO] Pominięto pustą linię.\n", line_num);
+            continue;
+        }
 
         char sep = detect_separator(line);
         int fixed = sanitize(line);
         if (fixed) total_fixes++;
 
-        char name[50], u_str[64], v_str[64], w_str[64];
+        char name[50] = {0}, u_str[64] = {0}, v_str[64] = {0}, w_str[64] = {0};
         char format_str[128];
+        int res;
         
-        // Czytamy pola jako surowy tekst, aby sprawdzić znaki
-        sprintf(format_str, " %%%d[^%c]%c%%%d[^%c]%c%%%d[^%c]%c%%%d[^\n\r]", 
-                49, sep, sep, 63, sep, sep, 63, sep, sep, 63);
+        // ZMIANA 2: Ujednolicenie walidacji - obsługa linii bez nazwy (zaczynających się od separatora)
+        if (line[0] == sep) {
+            sprintf(format_str, "%c%%%d[^%c]%c%%%d[^%c]%c%%%d[^\n\r]", sep, 63, sep, sep, 63, sep, sep, 63);
+            res = sscanf(line, format_str, u_str, v_str, w_str);
+            res++; // Sztucznie zwiększamy, by udawać obecność (pustej) nazwy dla logiki res == 4
+            strcpy(name, "(brak)");
+        } else {
+            sprintf(format_str, "%%%d[^%c]%c%%%d[^%c]%c%%%d[^%c]%c%%%d[^\n\r]", 49, sep, sep, 63, sep, sep, 63, sep, sep, 63);
+            res = sscanf(line, format_str, name, u_str, v_str, w_str);
+        }
 
-        int res = sscanf(line, format_str, name, u_str, v_str, w_str);
         int line_error = 0;
 
         if (res == 4) {
@@ -105,7 +121,10 @@ int validate_and_process(const char *filename) {
             int dots = 0;
             for (int i = 0; w_str[i]; i++) {
                 if (w_str[i] == '.') dots++;
-                else if (!isdigit((unsigned char)w_str[i]) && !isspace((unsigned char)w_str[i])) line_error = 1;
+                // Obsługa liczb ujemnych w walidacji wagi
+                else if (!isdigit((unsigned char)w_str[i]) && !isspace((unsigned char)w_str[i]) && !(i == 0 && w_str[i] == '-')) {
+                    line_error = 1;
+                }
             }
             if (dots > 1) line_error = 1;
         } else {
@@ -148,49 +167,70 @@ int read_graph(Graph *g, const char *filename) {
 
     g->edges = malloc(1000 * sizeof(Edge));
     g->nodes = calloc(1000, sizeof(Node));
+    // Sprawdzenie powodzenia malloc/calloc
+    if (!g->edges || !g->nodes) { fclose(f); return -1; }
+
     int id_map[10001]; 
     for(int i=0; i<10001; i++) id_map[i] = -1;
 
     g->edge_count = 0;
     g->node_count = 0;
-    char line[256], name[50];
+    char line[256];
     int line_num = 0;
 
     while (fgets(line, sizeof(line), f)) {
         line_num++;
-        if (strlen(line) <= 1 || line[0] == '\n') continue;
-
+        // 1. Całkowite ignorowanie linii, które nie mają cyfr/liter
+        int has_data = 0;
+        for(int i=0; line[i]; i++) {
+            if(isalnum((unsigned char)line[i])) { has_data = 1; break; }
+        }
+        if(!has_data) {
+            // Komunikat o napotkaniu pustej linii w read_graph
+            printf("Linia %d: [INFO] Napotkano pustą linię - pomijam.\n", line_num);
+            continue;
+        }
+        
         char sep = detect_separator(line);
         sanitize(line);
 
-        int u_id, v_id;
-        double w;
-        int res;
+        // 2. KLUCZOWE: Resetujemy zmienne, żeby nie użyć danych z poprzedniej linii!
+        int u_id = -1, v_id = -1;
+        double w = 0.0;
+        char name[50] = {0};
+        int res = 0;
+
+        // Czytamy bezpośrednio do zmiennych docelowych.
         if (line[0] == sep) {
-            char fstr[32];
+            char fstr[64];
             sprintf(fstr, "%c%%d%c%%d%c%%lf", sep, sep, sep);
             res = sscanf(line, fstr, &u_id, &v_id, &w);
         } else {
             char fstr[64];
-            sprintf(fstr, " %%49[^%c]%c%%d%c%%d%c%%lf", sep, sep, sep, sep);
+            sprintf(fstr, "%%49[^%c]%c%%d%c%%d%c%%lf", sep, sep, sep, sep);
             res = sscanf(line, fstr, name, &u_id, &v_id, &w);
         }
 
-        if (res >= 3) {
+        // 3. Sprawdzamy, czy faktycznie wczytaliśmy U i V
+        if (res >= 2 && u_id != -1 && v_id != -1) {
+            // POPRAWKA: Zabezpieczenie przed wyjściem poza zakres id_map i g->nodes
             if (u_id < 0 || u_id >= 10000 || v_id < 0 || v_id >= 10000) continue;
+            if (g->node_count >= 1000) continue; 
 
             if (id_map[u_id] == -1) {
                 id_map[u_id] = g->node_count;
                 g->nodes[g->node_count].id = u_id;
                 g->node_count++;
             }
-            if (id_map[v_id] == -1) {
+            if (id_map[v_id] == -1 && g->node_count < 1000) {
                 id_map[v_id] = g->node_count;
                 g->nodes[g->node_count].id = v_id;
                 g->node_count++;
             }
 
             int u_idx = id_map[u_id], v_idx = id_map[v_id];
+            if (u_idx == -1 || v_idx == -1) continue;
+
             int is_duplicate = 0;
             for (int k = 0; k < g->edge_count; k++) {
                 if ((g->edges[k].u_idx == u_idx && g->edges[k].v_idx == v_idx) ||
@@ -209,6 +249,12 @@ int read_graph(Graph *g, const char *filename) {
         }
     }
     fclose(f);
+
+    // Komunikat o uruchomieniu algorytmu z wczytanymi danymi
+    printf("\nWczytywanie zakończone sukcesem.\n");
+    printf("Statystyki: %d węzłów, %d krawędzi.\n", g->node_count, g->edge_count);
+    printf("Uruchamiam algorytm spójności (DFS) dla powyższych danych...\n\n");
+
     return 0;
 }
 
