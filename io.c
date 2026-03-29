@@ -84,35 +84,44 @@ int validate_and_process(const char *filename) {
         int fixed = sanitize(line);
         if (fixed) total_fixes++;
 
-        char format_str[64];
-        int res = 0;
+        char name[50], u_str[64], v_str[64], w_str[64];
+        char format_str[128];
+        
+        // Czytamy pola jako surowy tekst, aby sprawdzić znaki
+        sprintf(format_str, " %%%d[^%c]%c%%%d[^%c]%c%%%d[^%c]%c%%%d[^\n\r]", 
+                49, sep, sep, 63, sep, sep, 63, sep, sep, 63);
 
-        if (line[0] == sep) {
-            sprintf(format_str, "%c%%d%c%%d%c%%lf", sep, sep, sep);
-            res = sscanf(line, format_str, &u, &v, &w);
-            if (res == 3) {
-                printf("%-7d | Krawedz (auto): %d -> %d | OK (brak nazwy)\n", line_num, u, v);
-            }
-        } else {
-            int char_count = 0;
-            sprintf(format_str, " %%49[^%c]%c%%d%c%%d%c%%lf %%n", sep, sep, sep, sep);
-            res = sscanf(line, format_str, name, &u, &v, &w, &char_count);
+        int res = sscanf(line, format_str, name, u_str, v_str, w_str);
+        int line_error = 0;
+
+        if (res == 4) {
+            // Walidacja U i V - tylko cyfry
+            for (int i = 0; u_str[i]; i++) 
+                if (!isdigit((unsigned char)u_str[i]) && !isspace((unsigned char)u_str[i])) line_error = 1;
+            for (int i = 0; v_str[i]; i++) 
+                if (!isdigit((unsigned char)v_str[i]) && !isspace((unsigned char)v_str[i])) line_error = 1;
             
-            if (res == 4) {
-                printf("%-7d | Krawedz %s: %d -> %d (w: %.2f) ", line_num, name, u, v, w);
-                printf("| [%s]\n", fixed ? "Poprawiono ," : (sep == ',' ? "Separator ," : "OK"));
+            // Walidacja Wagi - cyfry i kropka
+            int dots = 0;
+            for (int i = 0; w_str[i]; i++) {
+                if (w_str[i] == '.') dots++;
+                else if (!isdigit((unsigned char)w_str[i]) && !isspace((unsigned char)w_str[i])) line_error = 1;
             }
+            if (dots > 1) line_error = 1;
+        } else {
+            line_error = 1;
         }
 
-        if (res < 3 || (line[0] != sep && res < 4)) {
-            printf("%-7d | [!!! BŁĄD KRYTYCZNY !!!]\n", line_num);
+        if (line_error) {
+            printf("%-7d | [!!! BŁĄD KRYTYCZNY !!!] Wykryto litery lub zły format.\n", line_num);
             critical_errors++;
+        } else {
+            printf("%-7d | Krawedz %s: %s -> %s | OK\n", line_num, name, u_str, v_str);
         }
     } 
     
     fclose(f);
 
-    // NAPRAWIONE: Teraz te warunki są częścią funkcji
     if (critical_errors > 0) {
         printf("\nSTOP! Znaleziono %d bledow krytycznych w strukturze pliku.\n", critical_errors);
         printf(" -> INFO: Poprawny format to: Nazwa;U;V;Waga\n");
@@ -120,12 +129,7 @@ int validate_and_process(const char *filename) {
         return -1;
     }
 
-    if (total_fixes > 0) {
-        printf("INFO: Dane poprawne technicznie (dokonano %d autokorekt).\n", total_fixes);
-    } else {
-        printf("INFO: Dane poprawne technicznie.\n");
-    }
-
+    if (total_fixes > 0) printf("INFO: Dokonano %d autokorekt separatora dziesiętnego.\n", total_fixes);
     printf("Uruchamiam przetwarzanie...\n");
     return 0; 
 }

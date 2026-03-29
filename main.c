@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
         }
         compute_tutte_layout(&g); 
         if (is_tutte_layout_planar(&g)) {
-            printf("Sukces! Graf planarny (Tutte).\n");
+            printf("Sukces! Graf jest planarny (Tutte).\n");
             success = 1;
         } else {
             printf("[Ostrzeżenie] Graf Tutte'a ma przecięcia.\n");

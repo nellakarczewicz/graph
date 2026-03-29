@@ -1,4 +1,4 @@
 Krawedz1;A;2;1.0
 Krawedz2;2;3;1.50O
 Krawedz3;3;B;0.8
-Krawedz4;4;1;1.O
+Krawedz4;4;1;1.0
