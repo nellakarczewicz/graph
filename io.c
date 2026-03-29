@@ -85,14 +85,22 @@ int validate_and_process(const char *filename) {
         line_num++;
         if (strlen(line) <= 1 || line[0] == '\n') continue;
 
+        // 1. Resetujemy zmienne, aby śmieci z poprzedniej linii nie zostały
+        u = -1; v = -1; w = -1.0; 
+        memset(name, 0, sizeof(name));
+
         char sep = detect_separator(line);
         int fixed = sanitize(line);
         if (fixed) total_fixes++;
 
+        // Używamy %n by sprawdzić czy sscanf wczytał całą linię poprawnie
+        int char_count = 0;
         char format[32];
-        sprintf(format, " %%49[^%c]%c%%d%c%%d%c%%lf", sep, sep, sep, sep);
+        sprintf(format, " %%49[^%c]%c%%d%c%%d%c%%lf %%n", sep, sep, sep, sep);
 
-        if (sscanf(line, format, name, &u, &v, &w) == 4) {
+        int result = sscanf(line, format, name, &u, &v, &w, &char_count);
+
+        if (result == 4) {
             printf("%-7d | Krawedz %s: %d -> %d (w: %.2f) ", line_num, name, u, v, w);
             printf("| [%s]\n", fixed ? "Poprawiono ," : (sep == ',' ? "Separator ," : "OK"));
         } else {
@@ -107,6 +115,8 @@ int validate_and_process(const char *filename) {
     // SCENARIUSZ 1: Błędy uniemożliwiające start
     if (critical_errors > 0) {
         printf("\nSTOP! Znaleziono %d bledow krytycznych w strukturze pliku.\n", critical_errors);
+        printf(" -> INFO: Poprawny format to: Nazwa;U;V;Waga\n");
+        printf(" -> Separator danych to ŚREDNIK (;), a separator dziesiętny to KROPKA (.)\n");
         return -1;
     }
 

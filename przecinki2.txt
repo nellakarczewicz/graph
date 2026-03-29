@@ -1,0 +1,4 @@
+Krawedz1,1,2,1.0
+Krawedz2,2,3,1.5
+Krawedz3,3,4,0.8
+Krawedz4,4,1,1.0

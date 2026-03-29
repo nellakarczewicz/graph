@@ -16,6 +16,7 @@ void print_usage(char *prog_name) {
 int main(int argc, char *argv[]) {
     srand(time(NULL));
     int opt;
+    int success = 0;
     char *input_path = NULL;
     char *output_path = NULL;
     char *algorithm = "tutte";
@@ -49,7 +50,6 @@ int main(int argc, char *argv[]) {
         return 5;
     }
 
-<<<<<<< HEAD
     // Sprawdzenie spójności (Kluczowy moment)
     if (!is_graph_connected(&g)) {
         printf("\n============================================================\n");
@@ -64,10 +64,7 @@ int main(int argc, char *argv[]) {
         return 9; // Zwracamy kod błędu 9 dla braku spójności
     }
 
-    int success = 0; // Flaga sukcesu dla całego procesu
-=======
-    int success = 0;
->>>>>>> 3feb5cc5e5743ec5158b5f387f493baa1eca7d8d
+    success = 0; // Flaga sukcesu dla całego procesu
 
     // --- LOGIKA WYBORU ALGORYTMU ---
     if (strcmp(algorithm, "tutte") == 0) {
@@ -90,13 +87,10 @@ int main(int argc, char *argv[]) {
             free_graph(&g);
             return 7;
         }
-<<<<<<< HEAD
-=======
         if (!is_graph_connected(&g)) {
             free_graph(&g);
             return 9;
         }
->>>>>>> 3feb5cc5e5743ec5158b5f387f493baa1eca7d8d
 
         int attempts = 0;
         while (!success && attempts < 3000) {

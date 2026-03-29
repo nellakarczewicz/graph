@@ -84,8 +84,8 @@ void init_random_positions(Graph *graph) {
     for (int i = 0; i < graph->node_count; i++) {
         // Startujemy w małym obszarze 10x10 na środku
         // Dzięki temu siły odpychania "wypchną" graf symetrycznie na zewnątrz
-        graph->nodes[i].x = (double)rand() / RAND_MAX * 10.0 - 5.0; // Losowanie X
-        graph->nodes[i].y = (double)rand() / RAND_MAX * 10.0 - 5.0; // Losowanie Y
+        graph->nodes[i].x = centerX + ((double)rand() / RAND_MAX * 10.0 - 5.0); // Losowanie X
+        graph->nodes[i].y = centerY + ((double)rand() / RAND_MAX * 10.0 - 5.0); // Losowanie Y
         // Wyzerowuje wektory przesunięcia na start
         graph->nodes[i].dx = 0;
         graph->nodes[i].dy = 0;
