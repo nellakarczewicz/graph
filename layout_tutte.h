@@ -5,14 +5,18 @@
 
 /**
  * Główna funkcja wyliczająca pozycje wierzchołków metodą Tutte'a.
- * Zgodnie z tabelą: Implementacja metody barycentrycznej.
  */
 void compute_tutte_layout(Graph *g);
 
 /**
- * Funkcja pomocnicza: rozmieszcza wierzchołki zewnętrznej ściany 
- * na obwodzie koła, aby stworzyć ramę dla grafu.
+ * Funkcja pomocnicza: rozmieszcza wierzchołki zewnętrznej ściany na obwodzie koła.
  */
 void initialize_tutte_fixed_nodes(Graph *g);
 
-#endif // LAYOUT_TUTTE_H
+/**
+ * Weryfikuje, czy ułożenie Tutte'a jest planarne (brak przecięć).
+ * Zwraca 1 dla sukcesu, 0 dla porażki.
+ */
+int is_tutte_layout_planar(Graph *g);
+
+#endif
