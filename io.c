@@ -169,24 +169,15 @@ int validate_and_process(const char *filename)
 
         int res;
 
-        // ZMIANA 2: Ujednolicenie walidacji - obsługa linii bez nazwy (zaczynających się od separatora)
-
+        // Każda krawędź MUSI mieć nazwę na początku.
         if (line[0] == sep)
         {
-
-            sprintf(format_str, "%c%%%d[^%c]%c%%%d[^%c]%c%%%d[^\n\r]", sep, 63, sep, sep, 63, sep, sep, 63);
-
-            res = sscanf(line, format_str, u_str, v_str, w_str);
-
-            res++; // Sztucznie zwiększamy, by udawać obecność (pustej) nazwy dla logiki res == 4
-
-            strcpy(name, "(brak)");
+            res = 0; // Wymusi wejście w line_error (brak nazwy)
         }
         else
         {
-
-            sprintf(format_str, "%%%d[^%c]%c%%%d[^%c]%c%%%d[^%c]%c%%%d[^\n\r]", 49, sep, sep, 63, sep, sep, 63, sep, sep, 63);
-
+            // OGRANICZENIE DO 10 ZNAKÓW W SSCANF (%10[^%c])
+            sprintf(format_str, "%%%d[^%c]%c%%%d[^%c]%c%%%d[^%c]%c%%%d[^\n\r]", 10, sep, sep, 63, sep, sep, 63, sep, sep, 63);
             res = sscanf(line, format_str, name, u_str, v_str, w_str);
         }
 
@@ -194,6 +185,18 @@ int validate_and_process(const char *filename)
 
         if (res == 4)
         {
+            // WALIDACJA NAZWY (BRAK ZNAKÓW SPECJALNYCH)
+            // DOZWOLONE TYLKO LITERY I CYFRY
+            // Cel: Max 10 znaków (już w sscanf), brak spacji, brak wielkich liter, brak znaków specjalnych
+            if (strcmp(name, "(brak)") != 0) {
+                for (int i = 0; name[i]; i++) {
+                    // Sprawdzamy czy znak to mała litera LUB cyfra
+                    // Jeśli nie jest ani jednym, ani drugim -> błąd (wyłapie spacje, wielkie litery i symbole)
+                    if (!islower((unsigned char)name[i]) && !isdigit((unsigned char)name[i])) {
+                        line_error = 1;
+                    }
+                }
+            }
 
             // Walidacja cyfr i formatu wagi
 
@@ -243,15 +246,17 @@ int validate_and_process(const char *filename)
             // Przygotowujemy czytelny opis krawędzi
             snprintf(data_buffer, sizeof(data_buffer), "Krawedz %s: %d -> %d (w: %.2f)", name, u_val, v_val, atof(w_str));
 
-            if (u_val == v_val) {
-                // WYKRYTO PĘTLĘ: Wypisujemy status BŁĄD KRYTYCZNY w tabeli
+            // --- WERYFIKACJA CZY ID MIEŚCI SIĘ W ZAKRESIE 1-1000 ---
+            if (u_val < 1 || u_val > 1000 || v_val < 1 || v_val > 1000) {
+                printf("%-8d | %-45s | %-15s\n", line_num, data_buffer, "BŁĄD KRYTYCZNY");
+                printf("         | [STOP] ID WIERZCHOŁKA POZA DOPUSZCZALNYM ZAKRESEM [1, 1000]!\n");
+                critical_errors++;
+            } 
+            else if (u_val == v_val) {
                 printf("%-8d | %-45s | %-15s\n", line_num, data_buffer, "BŁĄD KRYTYCZNY");
                 printf("         | [STOP] Wykryto pętlę własną (%d -> %d).\n", u_val, v_val);
-                
-                // Zwiększamy licznik błędów, co wymusi return -1 na końcu funkcji
                 critical_errors++; 
             } else {
-                // JEŚLI NIE MA PĘTLI: Standardowy status OK
                 const char *status = fixed ? "[Poprawiono ,]" : "[OK]";
                 printf("%-8d | %-45s | %-15s\n", line_num, data_buffer, status);
             }
@@ -270,6 +275,8 @@ int validate_and_process(const char *filename)
         printf(" -> INFO: Poprawny format to: Nazwa;U;V;Waga\n");
 
         printf(" -> Separator danych to ŚREDNIK (;), a separator dziesiętny to KROPKA (.)\n");
+
+        printf(" -> ID wierzchołków muszą mieścić się w przedziale od 1 do 1000.\n");
 
         return -1;
     }
@@ -314,9 +321,9 @@ int read_graph(Graph *g, const char *filename)
         return -1;
     }
 
-    int id_map[10001];
+    int id_map[1001];
 
-    for (int i = 0; i < 10001; i++)
+    for (int i = 0; i < 1001; i++)
         id_map[i] = -1;
 
     g->edge_count = 0;
@@ -393,13 +400,9 @@ int read_graph(Graph *g, const char *filename)
 
         // 3. Sprawdzamy, czy faktycznie wczytaliśmy U i V
 
-        if (res >= 2 && u_id != -1 && v_id != -1)
+        // --- FILTROWANIE ID SPOZA ZAKRESU [1, 1000] PODCZAS WCZYTYWANIA ---
+        if (res >= 2 && u_id >= 1 && u_id <= 1000 && v_id >= 1 && v_id <= 1000 && u_id != v_id)
         {
-
-            // POPRAWKA: Zabezpieczenie przed wyjściem poza zakres id_map i g->nodes
-
-            if (u_id < 0 || u_id >= 10000 || v_id < 0 || v_id >= 10000)
-                continue;
 
             if (g->node_count >= 1000)
                 continue;
