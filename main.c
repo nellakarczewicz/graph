@@ -125,6 +125,19 @@ int main(int argc, char *argv[]) {
         return 5;
     }
 
+    // WALIDACJA MINIMALNEJ LICZBY KRAWĘDZI
+    // LOGIKA: GRAF MUSI MIEĆ CO NAJMNIEJ 2 KRAWĘDZIE, ABY SYMULACJA MIAŁA SENS
+    if (g.edge_count < 2) {
+        printf("\n============================================================\n");
+        printf("   BŁĄD: ZA MAŁA LICZBA KRAWĘDZI    \n");
+        printf("============================================================\n");
+        printf("Napotkano %d krawędzi.\n", g.edge_count);
+        printf("-> Potrzeba >= 2 krawędzi, aby poprawnie wyznaczyć uklad. \n");
+        printf("============================================================\n");
+        free_graph(&g);
+        return 6; // Wykorzystujemy istniejący kod błędu dla problemów z wierzchołkami
+    }
+
     // --- FAZA 2: WERYFIKACJA STRUKTURY I SPOJNOSCI ---
 
     // WALIDACJA LICZBY WIERZCHOŁKÓW

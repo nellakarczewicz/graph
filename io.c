@@ -235,25 +235,27 @@ int validate_and_process(const char *filename)
         }
         else
         {
-            // WYKRYWANIE PĘTLI WŁASNEJ (U_ID == V_ID)
-            int u_val = atoi(u_str);
+            // Konwersja na liczby, aby sprawdzić pętlę własną
+            int u_val = atoi(u_str); // Zamieniamy tekst na liczbę
             int v_val = atoi(v_str);
-
             char data_buffer[256];
-
-            // Formatowanie danych: Krawedz Nazwa: U -> V (w: Waga)
-
-            snprintf(data_buffer, sizeof(data_buffer), "Krawedz %s: %s -> %s (w: %.2f)", name, u_str, v_str, atof(w_str));
+            
+            // Przygotowujemy czytelny opis krawędzi
+            snprintf(data_buffer, sizeof(data_buffer), "Krawedz %s: %d -> %d (w: %.2f)", name, u_val, v_val, atof(w_str));
 
             if (u_val == v_val) {
-                // TRAKTUJEMY PĘTLĘ JAKO BŁĄD KRYTYCZNY
+                // WYKRYTO PĘTLĘ: Wypisujemy status BŁĄD KRYTYCZNY w tabeli
                 printf("%-8d | %-45s | %-15s\n", line_num, data_buffer, "BŁĄD KRYTYCZNY");
-                printf("         | [STOP] Wykryto pętlę własną (%d -> %d). Graf nie może jej posiadać.\n", u_val, v_val);
-                critical_errors++; // ZWIĘKSZAMY LICZNIK BŁĘDÓW - TO ZATRZYMA PROGRAM
+                printf("         | [STOP] Wykryto pętlę własną (%d -> %d).\n", u_val, v_val);
+                
+                // Zwiększamy licznik błędów, co wymusi return -1 na końcu funkcji
+                critical_errors++; 
             } else {
+                // JEŚLI NIE MA PĘTLI: Standardowy status OK
                 const char *status = fixed ? "[Poprawiono ,]" : "[OK]";
                 printf("%-8d | %-45s | %-15s\n", line_num, data_buffer, status);
             }
+        }
     }
 
     printf("==============================================================================\n");
@@ -277,7 +279,7 @@ int validate_and_process(const char *filename)
 
     return 0;
 }
-}
+
 int is_potentially_planar(Graph *g){
 
     if (g->node_count <= 2) return 1;
@@ -326,7 +328,7 @@ int read_graph(Graph *g, const char *filename)
     int line_num = 0;
 
     while (fgets(line, sizeof(line), f))
-    {
+{
 
         line_num++;
 
