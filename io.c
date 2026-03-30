@@ -277,13 +277,14 @@ int validate_and_process(const char *filename)
 
     return 0;
 }
-
+}
 int is_potentially_planar(Graph *g){
 
     if (g->node_count <= 2) return 1;
 
     return (g->edge_count <= (3 * g->node_count - 6));
 }
+
 
 /**
 
