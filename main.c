@@ -50,6 +50,30 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // --- WERYFIKACJA NAZWY ALGORYTMU ---
+    // SPRAWDZAMY CZY PODANY ALGORYTM JEST NA LIŚCIE OBSŁUGIWANYCH
+    if (strcmp(algorithm, "tutte") != 0 && strcmp(algorithm, "fruchterman") != 0) {
+        printf("\n============================================================\n");
+        printf("   BŁĄD KRYTYCZNY: NIEZNANY ALGORYTM    \n");
+        printf("============================================================\n");
+        printf("Podana nazwa: [%s] jest nieprawidłowa.\n", algorithm);
+        printf("Dostępne opcje to: 'tutte' lub 'fruchterman'.\n");
+        printf("============================================================\n");
+        return 4; // KOD BŁĘDU DLA NIEPRAWIDŁOWEGO ALGORYTMU
+    }
+
+    // --- WERYFIKACJA ISTNIENIA PLIKU WEJŚCIOWEGO ---
+    // F_OK sprawdza samo istnienie pliku. R_OK sprawdziłoby uprawnienia do odczytu.
+    if (access(input_path, F_OK) != 0) {
+        printf("\n============================================================\n");
+        printf("   BŁĄD KRYTYCZNY: NIEPRAWIDŁOWA ŚCIEŻKA    \n");
+        printf("============================================================\n");
+        printf("Plik wejściowy: [%s] nie istnieje lub ścieżka jest błędna.\n", input_path);
+        printf("Upewnij się, że nazwa pliku i rozszerzenie są poprawne.\n");
+        printf("============================================================\n");
+        return 3; // Nowy kod błędu dla nieprawidłowej ścieżki
+    }
+
     Graph g = { .nodes = NULL, .edges = NULL, .node_count = 0, .edge_count = 0, .width = 1000.0, .height = 1000.0 };
 
     // --- FAZA 1: WALIDACJA I ODCZYT ---
@@ -125,7 +149,7 @@ int main(int argc, char *argv[]) {
         int attempts = 0;
         printf("\nUruchamiam symulację Fruchtermana (max 3000 prób)...\n");
         // KOMUNIKAT O SPRAWDZANIU PLANARNOSCI
-        printf("\nSprawdzanie planarności wygenerowanego układu (Tutte)...\n");
+        printf("\nSprawdzanie planarności wygenerowanego układu (Fruchterman)...\n");
 
         while (!success && attempts < 3000) {
             attempts++;
