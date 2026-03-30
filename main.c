@@ -64,7 +64,23 @@ int main(int argc, char *argv[]) {
         return 5;
     }
 
-    // --- FAZA 2: WERYFIKACJA SPOJNOSCI ---
+    // --- FAZA 2: WERYFIKACJA STRUKTURY I SPOJNOSCI ---
+
+    // WALIDACJA LICZBY WIERZCHOŁKÓW
+    // LOGIKA: GRAF PLANARNY WYMAGA MINIMUM 3 WIERZCHOŁKÓW DO STWORZENIA KONSTRUKCJI GEOMETRYCZNEJ
+    if (g.node_count < 3) {
+        printf("\n============================================================\n");
+        printf("   BŁĄD: ZA MAŁA LICZBA WIERZCHOŁKÓW    \n");
+        printf("============================================================\n");
+        printf("Napotkano %d wierzchołków.\n", g.node_count);
+        printf("-> Potrzeba >= 3 wierzchołków, by wygenerować graf planarny.\n");
+        printf("============================================================\n");
+        free_graph(&g);
+        return 6; 
+    }
+
+    // KOMUNIKAT O ROZPOCZĘCIU SPRAWDZANIA SPÓJNOŚCI
+    printf("Sprawdzanie spójności grafu...\n");
     // Logika: Sprawdzenie algorytmem DFS, czy graf nie jest rozbity na czesci (Kod 9)
     if (!is_graph_connected(&g)) {
         printf("\n============================================================\n");
@@ -77,25 +93,25 @@ int main(int argc, char *argv[]) {
         
         free_graph(&g);
         return 9; 
+    } else {
+        // KOMUNIKAT POTWIERDZAJĄCY SPÓJNOŚĆ
+        printf("Sukces: Graf jest spójny. Przechodzę do obliczeń.\n");
     }
 
     int success = 0; // Flaga sukcesu dla całego procesu
 
     // --- FAZA 3: OBLICZENIA (LOGIKA WYBORU ALGORYTMU) ---
+
     if (strcmp(algorithm, "tutte") == 0) {
-        // Logika Tutte: Wymaga min. 3 wezlow do stworzenia ramy (Kod 6)
-        if (g.node_count < 3) {
-            fprintf(stderr, "Błąd: Tutte wymaga >= 3 wierzchołków!\n");
-            free_graph(&g);
-            return 6;
-        }
         compute_tutte_layout(&g); 
         if (is_tutte_layout_planar(&g)) {
             printf("Sukces! Graf planarny (Tutte).\n");
             success = 1;
         } else {
-            printf("[Ostrzeżenie] Graf Tutte'a ma przecięcia.\n");
-            success = 1; 
+            printf("\n============================================================\n");
+            printf("   KOMUNIKAT: WYNIK TUTTE NIE JEST PLANARNY    \n");
+            printf("============================================================\n");
+            printf("Zapis pliku został zablokowany.\n"); 
         }
     } 
     else if (strcmp(algorithm, "fruchterman") == 0) {
@@ -109,20 +125,43 @@ int main(int argc, char *argv[]) {
 
         // Mechanizm wielokrotnych prob: Resetowanie pozycji i ponowna symulacja fizyczna
         int attempts = 0;
+        printf("Uruchamiam symulację Fruchtermana (max 3000 prób)...\n");
         while (!success && attempts < 3000) {
             attempts++;
             init_random_positions(&g);
             run_fruchterman(&g, 1000, 30.0);
             if (is_layout_planar(&g)) success = 1;
         }
+
+        // DODANO: KOMUNIKAT O PORAZCE DLA FRUCHTERMANA PO WYCZERPANIU PROB
+        if (!success) {
+            printf("\n============================================================\n");
+            printf("   KOMUNIKAT: NIE ZNALEZIONO UKŁADU PLANARNEGO    \n");
+            printf("============================================================\n");
+            printf("Po 3000 prób algorytm FR nie wyeliminował przecięć.\n");
+            printf("Zapis pliku wyjściowego anulowany. Spróbuj ponownie.\n");
+        }
     }
 
     // --- FAZA 4: ZAPIS I CZYSZCZENIE ---
     // Logika: Jesli osiagnieto uklad bez przeciec lub Tutte skonczyl prace, zapisujemy dane (Kod 8 przy porazce)
     if (success) {
-        save_graph(&g, output_path, format);
+        // KOMUNIKAT POTWIERDZAJACY SCIEZKE ZAPISU
+        if (save_graph(&g, output_path, format) == 0) {
+            printf("\n>>> SUKCES: Wynik został zapisany do pliku [%s] <<<\n", output_path);
+            
+            // LOGIKA DYNAMICZNEGO KOMUNIKATU O WYBRANYM FORMACIE (TEXT/BIN)
+            if (strcmp(format, "bin") == 0) {
+                printf(">>> FORMAT: Plik BINARNY (.bin) <<<\n");
+            } else {
+                printf(">>> FORMAT: Plik TEKSTOWY (.txt) <<<\n");
+            }
+        } else {
+            fprintf(stderr, "Błąd: Nie udało się zapisać pliku wyjściowego!\n");
+        }
     }
 
-    free_graph(&g); // Zwolnienie pamieci dynamicznej
+    free_graph(&g); 
+    // ZWROT KODU 8 PRZY BRAKU SUKCESU (NIEPLANARNOSC)
     return success ? 0 : 8;
 }
