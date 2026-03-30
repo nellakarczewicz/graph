@@ -124,6 +124,9 @@ int main(int argc, char *argv[]) {
         // Mechanizm wielokrotnych prob: Resetowanie pozycji i ponowna symulacja fizyczna
         int attempts = 0;
         printf("\nUruchamiam symulację Fruchtermana (max 3000 prób)...\n");
+        // KOMUNIKAT O SPRAWDZANIU PLANARNOSCI
+        printf("\nSprawdzanie planarności wygenerowanego układu (Tutte)...\n");
+
         while (!success && attempts < 3000) {
             attempts++;
             init_random_positions(&g);
