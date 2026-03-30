@@ -111,8 +111,7 @@ int validate_and_process(const char *filename)
 
     FILE *f = fopen(filename, "r");
 
-    if (!f)
-        return -1;
+    if (!f) return -1;
 
     char line[256];
 
@@ -236,6 +235,9 @@ int validate_and_process(const char *filename)
         }
         else
         {
+            // WYKRYWANIE PĘTLI WŁASNEJ (U_ID == V_ID)
+            int u_val = atoi(u_str);
+            int v_val = atoi(v_str);
 
             char data_buffer[256];
 
@@ -243,12 +245,15 @@ int validate_and_process(const char *filename)
 
             snprintf(data_buffer, sizeof(data_buffer), "Krawedz %s: %s -> %s (w: %.2f)", name, u_str, v_str, atof(w_str));
 
-            // Status: OK lub Poprawiono ,
-
-            const char *status = fixed ? "[Poprawiono ,]" : "[OK]";
-
-            printf("%-8d | %-45s | %-15s\n", line_num, data_buffer, status);
-        }
+            if (u_val == v_val) {
+                // TRAKTUJEMY PĘTLĘ JAKO BŁĄD KRYTYCZNY
+                printf("%-8d | %-45s | %-15s\n", line_num, data_buffer, "BŁĄD KRYTYCZNY");
+                printf("         | [STOP] Wykryto pętlę własną (%d -> %d). Graf nie może jej posiadać.\n", u_val, v_val);
+                critical_errors++; // ZWIĘKSZAMY LICZNIK BŁĘDÓW - TO ZATRZYMA PROGRAM
+            } else {
+                const char *status = fixed ? "[Poprawiono ,]" : "[OK]";
+                printf("%-8d | %-45s | %-15s\n", line_num, data_buffer, status);
+            }
     }
 
     printf("==============================================================================\n");
@@ -273,11 +278,9 @@ int validate_and_process(const char *filename)
     return 0;
 }
 
-int is_potentially_planar(Graph *g)
-{
+int is_potentially_planar(Graph *g){
 
-    if (g->node_count <= 2)
-        return 1;
+    if (g->node_count <= 2) return 1;
 
     return (g->edge_count <= (3 * g->node_count - 6));
 }

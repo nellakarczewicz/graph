@@ -107,7 +107,15 @@ int main(int argc, char *argv[]) {
 
     // --- FAZA 1: WALIDACJA I ODCZYT ---
     // Logika: Najpierw sprawdzamy poprawnosc struktury pliku (Kod 10), potem wczytujemy dane (Kod 2)
-    if (validate_and_process(input_path) == -1) return 10;
+    if (validate_and_process(input_path) == -1){
+        printf("\n=========================================================================\n");
+        printf("   PRZETWARZANIE PRZERWANE: BŁĘDNA STRUKTURA GRAFU    \n");
+        printf("=========================================================================\n");
+        printf("Powód: Wykryto niedozwolone pętle własne lub inne błędy w strukturze grafu.\n");
+        printf("Sprawdź raport powyżej i popraw plik wejściowy.\n");
+        printf("=========================================================================\n");
+        return 12;
+    }
 
     if (read_graph(&g, input_path) != 0) return 2;
 
