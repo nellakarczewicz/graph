@@ -73,9 +73,13 @@ int validate_and_process(const char *filename) {
     char line[256];
     int line_num = 0, critical_errors = 0, total_fixes = 0;
 
-    printf("\n============================================================\n");
+    printf("\nUruchamiam przetwarzanie...\n");
+
+    printf("\n==============================================================================\n");
     printf("   RAPORT ANALIZY DANYCH WEJSCIOWYCH    \n");
-    printf("============================================================\n");
+    printf("==============================================================================\n");
+    printf("%-8s | %-45s | %-15s\n", "Linia", "Zinterpretowane dane", "Status");
+    printf("------------------------------------------------------------------------------\n");
 
     while (fgets(line, sizeof(line), f)) {
         line_num++;
@@ -90,7 +94,7 @@ int validate_and_process(const char *filename) {
         }
 
         char sep = detect_separator(line);
-        int fixed = sanitize(line);
+        int fixed = sanitize(line); // zamiana ',' na '.'
         if (fixed) total_fixes++;
 
         char name[50] = {0}, u_str[64] = {0}, v_str[64] = {0}, w_str[64] = {0};
@@ -111,20 +115,13 @@ int validate_and_process(const char *filename) {
         int line_error = 0;
 
         if (res == 4) {
-            // Walidacja U i V - tylko cyfry
-            for (int i = 0; u_str[i]; i++) 
-                if (!isdigit((unsigned char)u_str[i]) && !isspace((unsigned char)u_str[i])) line_error = 1;
-            for (int i = 0; v_str[i]; i++) 
-                if (!isdigit((unsigned char)v_str[i]) && !isspace((unsigned char)v_str[i])) line_error = 1;
-            
-            // Walidacja Wagi - cyfry i kropka
+            // Walidacja cyfr i formatu wagi
+            for (int i = 0; u_str[i]; i++) if (!isdigit((unsigned char)u_str[i]) && !isspace((unsigned char)u_str[i])) line_error = 1;
+            for (int i = 0; v_str[i]; i++) if (!isdigit((unsigned char)v_str[i]) && !isspace((unsigned char)v_str[i])) line_error = 1;
             int dots = 0;
             for (int i = 0; w_str[i]; i++) {
                 if (w_str[i] == '.') dots++;
-                // Obsługa liczb ujemnych w walidacji wagi
-                else if (!isdigit((unsigned char)w_str[i]) && !isspace((unsigned char)w_str[i]) && !(i == 0 && w_str[i] == '-')) {
-                    line_error = 1;
-                }
+                else if (!isdigit((unsigned char)w_str[i]) && !isspace((unsigned char)w_str[i]) && !(i == 0 && w_str[i] == '-')) line_error = 1;
             }
             if (dots > 1) line_error = 1;
         } else {
@@ -132,13 +129,20 @@ int validate_and_process(const char *filename) {
         }
 
         if (line_error) {
-            printf("%-7d | [!!! BŁĄD KRYTYCZNY !!!] Wykryto litery lub zły format.\n", line_num);
+            printf("%-8d | %-45s | %-15s\n", line_num, "[ !!! BŁĄD KRYTYCZNY - ZŁY FORMAT !!! ]", "BŁĄD");
             critical_errors++;
         } else {
-            printf("%-7d | Krawedz %s: %s -> %s | OK\n", line_num, name, u_str, v_str);
+            char data_buffer[256];
+            // Formatowanie danych: Krawedz Nazwa: U -> V (w: Waga)
+            snprintf(data_buffer, sizeof(data_buffer), "Krawedz %s: %s -> %s (w: %.2f)", name, u_str, v_str, atof(w_str));
+            
+            // Status: OK lub Poprawiono ,
+            const char* status = fixed ? "[Poprawiono ,]" : "[OK]";
+            printf("%-8d | %-45s | %-15s\n", line_num, data_buffer, status);
         }
     } 
     
+    printf("==============================================================================\n");
     fclose(f);
 
     if (critical_errors > 0) {
@@ -149,7 +153,6 @@ int validate_and_process(const char *filename) {
     }
 
     if (total_fixes > 0) printf("INFO: Dokonano %d autokorekt separatora dziesiętnego.\n", total_fixes);
-    printf("Uruchamiam przetwarzanie...\n");
     return 0; 
 }
 
@@ -253,6 +256,8 @@ int read_graph(Graph *g, const char *filename) {
     // Komunikat o uruchomieniu algorytmu z wczytanymi danymi
     printf("\nWczytywanie zakończone sukcesem.\n");
     printf("Statystyki: %d węzłów, %d krawędzi.\n", g->node_count, g->edge_count);
+    printf("------------------------------------------------------------------------------\n");
+
     
 
     return 0;

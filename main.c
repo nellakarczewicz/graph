@@ -154,7 +154,8 @@ int main(int argc, char *argv[]) {
     if (success) {
         // KOMUNIKAT POTWIERDZAJACY SCIEZKE ZAPISU
         if (save_graph(&g, output_path, format) == 0) {
-            printf("\n>>> SUKCES: Wynik został zapisany do pliku [%s] <<<\n", output_path);
+            printf("\n------------------------------------------------------------------------------\n");
+            printf(">>> SUKCES: Wynik został zapisany do pliku [%s] <<<\n", output_path);
             
             // LOGIKA DYNAMICZNEGO KOMUNIKATU O WYBRANYM FORMACIE (TEXT/BIN)
             if (strcmp(format, "bin") == 0) {
