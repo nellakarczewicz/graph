@@ -1,81 +1,86 @@
-*Graph Layout Engine (C Edition)*
+Graph Layout Engine (C Edition)
 
-Zaawansowane narzędzie konsolowe do automatycznego rozmieszczania wierzchołków grafu w przestrzeni 2D. Program implementuje dwa odmienne podejścia: matematyczną metodę barycentryczną oraz fizyczny model siłowy.
+A command-line utility for the automated 2D positioning of graph vertices using barycentric methods and force-directed physical models.
 
 
-*Główne Funkcjonalności*
+Compilation
 
-    Hybrydowy Parser I/O: Inteligentna obsługa plików tekstowych z automatyczną korektą separatorów (, vs ;) oraz kropki dziesiętnej.
+The project can be compiled in two ways:
+1. Using Makefile (Recommended)
+//Bash
+make clean
+make
 
-    Silnik Walidacji: Przed obliczeniami program przeprowadza pełną analizę strukturalną grafu, generując raport spójności i poprawności danych.
+2. Using GCC Compiler Directly
 
-    Gwarancja Planarności (Tutte): Implementacja zapewniająca brak przecięć krawędzi dla grafów trójspójnych poprzez rozwiązanie układu równań liniowych.
+If the Makefile is unavailable, use the following command (the math library -lm is required):
+//Bash
 
-    Fizyczna Optymalizacja (Fruchterman-Reingold): Iteracyjne wyznaczanie pozycji wierzchołków z mechanizmem "Retry Logic" (do 3000 prób) w celu znalezienia ułożenia planarnego.
+gcc -Wall -Wextra -std=c11 main.c layout_tutte.c fruchterman.c io.c -o program -lm
 
-*Instrukcja Kompilacji*
 
-Projekt wykorzystuje plik Makefile do automatyzacji procesu budowania.
-make        # Kompilacja całego projektu
-make clean  # Usunięcie plików obiektowych i binariów
 
-*Uruchomienie i Składnia*
 
-Bash
+Usage and Syntax
+The program is controlled via command-line arguments. Use the -h flag to display help.
+Execution Syntax:
+//Bash
 
-./program -i <wejscie.txt> -o <wyjscie> -a <algorytm> [-f <format>]
+./program -i <input.txt> -o <output> -a <algorithm> [-f <format>]
 
-Parametry:
+Parameter Description:
 
-    -i : Plik wejściowy w formacie Nazwa;ID_U;ID_V;Waga.
+    -i [path]: Path to the input file containing the edge list.
 
-    -o : Ścieżka do pliku wynikowego.
+    -o [path]: Path for the output file.
 
-    -a : Wybór algorytmu: tutte (matematyczny) lub fruchterman (siłowy).
+    -a [tutte | fruchterman]: Choice of layout algorithm.
 
-    -f : Format zapisu: txt (czytelny dla człowieka) lub bin (szybki zapis binarny).
+    -f [txt | bin]: Export data format (defaults to txt).
 
-*Diagnostyka i Kody Błędów*
+    -h: Displays the user manual and input file formatting rules.
 
-Program zwraca specyficzne kody wyjścia w przypadku napotkania problemów z danymi:
 
-Kod	    Znaczenie  	        Przyczyna
 
-6   	Błąd rozmiaru   	Algorytm Tutte'a wymaga minimum 3 wierzchołków.
-7   	Brak planarności    Złamanie wzoru Eulera (E>3V−6) – graf zbyt gęsty.
-8   	Błąd optymalizacji  Nie udało się rozplątać grafu po 3000 próbach (Fruchterman).
-9   	Brak spójności      Graf jest rozbity na osobne komponenty.
-10  	Błąd krytyczny      Niepoprawny format danych w pliku wejściowym.
 
-*Struktura Modułowa Projektu*
+Input File Formatting Rules
 
-Projekt został podzielony na niezależne moduły, co zapewnia separację logiki obliczeniowej od operacji wejścia/wyjścia.
-1. Rdzeń Danych (graph.h)
+The input module (io.c) performs strict data validation. The file must adhere to the following technical criteria:
 
-    Definiuje kluczowe struktury: Node (wierzchołek z pozycją i wektorem siły), Edge (krawędź z wagą) oraz Graph (kontener danych).
+    Line Structure:
 
-    Zapewnia spójność danych pomiędzy wszystkimi algorytmami.
+    Edge_Name;Node_U;Node_V;Weight
 
-2. Moduł Komunikacji i Analizy (io.c, io.h)
+    Field Requirements:
+        Edge Name:
+            Maximum length: 10 characters.
+            Allowed characters: Lowercase Latin letters (a-z) and digits (0-9) only.
+            Prohibited: Spaces, uppercase letters, special characters, and diacritics.
+        Vertex Identifiers (Node_U, Node_V):
+            Type: Positive integers in the range 1 - 1000.
+            Prohibited: Self-loops (Node_U must be different from Node_V).
+        Edge Weight:
+            Format: Decimal number (e.g., 1.50).
+            The program performs automatic decimal separator correction (comma to dot conversion).
+        Separators and Special Characters:
+            Accepted column separators: Semicolon (;) or comma (,).
+            Lines starting with # and empty lines are ignored.
 
-    Parser: Obsługuje wczytywanie list krawędzi z automatycznym mapowaniem ID wierzchołków na ciągłe indeksy tablicy.
+Diagnostics and Error Codes
 
-    Walidator: Funkcja validate_and_process wykonuje wstępny skan pliku, raportując poprawki formatowania i błędy krytyczne.
+In case of structural or mathematical errors, the program terminates and returns a specific exit code:
+Code	Meaning	                    Cause
+6	    Size Error	                Insufficient number of vertices (< 3) or edges (< 2).
+7	    Non-planar	                Euler's formula violation (E>3V−6) – graph is too dense.
+8	    Optimization Failure	    Fruchterman-Reingold algorithm failed after 3000 attempts.
+9	    Non-connected	            Disconnected graph components detected via DFS.
+10	    Format Error	            Input data inconsistent with specification (e.g., letters in IDs).
 
-    Analizator Grafu: Zawiera implementację algorytmu DFS sprawdzającego spójność (is_graph_connected) oraz weryfikację teoretycznej planarności na podstawie wzoru Eulera (is_potentially_planar).
 
-3. Moduł Metody Barycentrycznej (layout_tutte.c, layout_tutte.h)
+Modular Architecture
 
-    Implementuje algorytm Tutte’a, który rozmieszcza wierzchołki zewnętrzne na obwodzie koła, a wewnętrzne w ich baricentrum (średniej arytmetycznej sąsiadów).
-
-    Gwarantuje deterministyczne i planarne ułożenie dla grafów spełniających założenia teoretyczne.
-
-4. Moduł Modelu Siłowego (fruchterman.c, fruchterman.h)
-
-    Realizuje dynamiczną symulację fizyczną, w której wierzchołki odpychają się, a krawędzie przyciągają.
-
-    Geometria Obliczeniowa: Zawiera funkcję is_layout_planar, która wykorzystuje algorytm orientacji punktów (CCW) do detekcji przecięć krawędzi w czasie rzeczywistym.
-
-5. Moduł Sterujący (main.c)
-
-    Zarządza cyklem życia programu: od obsługi argumentów CLI (getopt), przez proces walidacji, aż po pętlę optymalizacji (do 3000 prób dla algorytmów stochastycznych).
+    graph.h: Definitions for Node, Edge, and Graph structures.
+    io.c / io.h: Data parser, syntax validation, and DFS algorithm.
+    layout_tutte.c: Implementation of the deterministic barycentric method.
+    fruchterman.c: Implementation of the force-directed model with CCW intersection testing.
+    main.c: Coordination of data flow, CLI handling, and "Retry Logic" for stochastic processes.

@@ -31,3 +31,21 @@ run_tutte: all
 
 run_fru: all
 	./$(TARGET) -i test.txt -o wynik.txt -a fruchterman
+# Pomoc dla programisty (Zasady pisowni i komendy)
+help:
+	@echo "============================================================"
+	@echo " ŚCIĄGAWKA DLA PROGRAMISTOW I TESTEROW (MAKE HELP):"
+	@echo "============================================================"
+	@echo " Kompilacja:  make"
+	@echo " Czyszczenie: make clean"
+	@echo " Uruchomienie Tutte:  ./$(TARGET) -i test.txt -o out.txt -a tutte"
+	@echo " Uruchomienie Fru:    ./$(TARGET) -i test.txt -o out.txt -a fruchterman"
+	@echo ""
+	@echo " ZASADY PISOWNI W PLIKU WEJŚCIOWYM (.txt):"
+	@echo " -> Format: Nazwa;ID_Start;ID_End;Waga"
+	@echo " -> Nazwa:  Małe litery i cyfry, max 10 znaków, bez spacji."
+	@echo " -> ID:     Liczby od 1 do 1000."
+	@echo " -> Waga:   Liczba z kropką (np. 1.00)."
+	@echo "============================================================"
+
+.PHONY: help

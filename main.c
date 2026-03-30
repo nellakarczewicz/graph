@@ -24,6 +24,27 @@ void print_usage(char *prog_name) {
  * logika/funkcja: Glowny kontroler programu; zarzadza przeplywem danych miedzy walidacja, odczytem, obliczeniami a zapisem.
  */
 int main(int argc, char *argv[]) {
+    // --- OBSŁUGA FLAG POMOCY ---
+    if (argc >1 ) {
+        char *arg = argv[1];
+        if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0 || 
+            strcmp(arg, "-help") == 0 || strcmp(arg, "/h") == 0 || 
+            strcmp(arg, "help") == 0) {
+            
+            printf("============================================================\n");
+            printf("   INSTRUKCJA OBSLUGI PROGRAMU I ZASADY PISOWNI\n");
+            printf("============================================================\n");
+            printf("Uzycie: ./program -i <wejscie> -o <wyjscie> -a <tutte|fruchterman>\n\n");
+            printf("ZASADY PISOWNI PLIKU WEJSCIOWEGO:\n");
+            printf("1. Format linii: Nazwa;U;V;Waga (separator ';' lub ',')\n");
+            printf("2. Nazwa:  max 10 znakow (a-z, 0-9), brak spacji i PL znakow.\n");
+            printf("3. ID:     Liczby calkowite dodatnie (zakres 1-1000).\n");
+            printf("4. Waga:   Liczba dziesietna (np. 1.50). Przecinek korygowany na kropke.\n");
+            printf("5. Uwagi:  Linie zaczynajace sie od '#' oraz puste sa ignorowane.\n");
+            printf("============================================================\n");
+            return 0; // Wyjście z programu po wyświetleniu pomocy
+        }
+    }
     srand(time(NULL)); // Inicjalizacja generatora liczb losowych dla algorytmu Fruchtermanna
     int opt;
     char *input_path = NULL;
