@@ -254,7 +254,7 @@ int read_graph(Graph *g, const char *filename) {
     fclose(f);
 
     // Komunikat o uruchomieniu algorytmu z wczytanymi danymi
-    printf("\nWczytywanie zakończone sukcesem.\n");
+    printf("\nWczytywanie zakończone sukcesem. Dane są poprawne technicznie.\n");
     printf("Statystyki: %d węzłów, %d krawędzi.\n", g->node_count, g->edge_count);
     printf("------------------------------------------------------------------------------\n");
 
