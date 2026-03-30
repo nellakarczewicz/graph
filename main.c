@@ -31,14 +31,25 @@ int main(int argc, char *argv[]) {
     char *algorithm = "tutte"; // Domyslny algorytm
     char *format = "txt";      // Domyslny format zapisu
 
+    // FLAGA SPRAWDZAJĄCA CZY UŻYTKOWNIK SAM WPISAŁ FORMAT
+    int format_provided = 0;
+    // FLAGA SPRAWDZAJĄCA CZY UŻYTKOWNIK SAM WYBRAŁ ALGORYTM
+    int algo_provided = 0;
+
     // --- PARSOWANIE ARGUMENTOW ---
     // Logika: Pobieranie opcji uzytkownika za pomoca funkcji getopt
     while ((opt = getopt(argc, argv, "i:o:a:f:h")) != -1) {
         switch (opt) {
             case 'i': input_path = optarg; break;
             case 'o': output_path = optarg; break;
-            case 'a': algorithm = optarg; break;
-            case 'f': format = optarg; break;
+            case 'a': 
+                algorithm = optarg;
+                algo_provided = 1; // ZAZNACZAMY, ŻE UŻYTKOWNIK PODAŁ -a
+                break;
+            case 'f': 
+                format = optarg;
+                format_provided = 1; // ZAZNACZAMY, ŻE UŻYTKOWNIK PODAŁ -f
+                break;
             case 'h': print_usage(argv[0]); return 0;
             default: return 1;
         }
@@ -46,7 +57,13 @@ int main(int argc, char *argv[]) {
 
     // Walidacja obecnosci sciezek plikow
     if (input_path == NULL || output_path == NULL) {
-        fprintf(stderr, "Błąd: Brak podanego pliku wejściowego lub wyjściowego!\n");
+        printf("\n=====================================================================\n");
+        printf("   BŁĄD: BRAK PODANEGO PLIKU WEJŚCIOWEGO LUB WYJŚCIOWEGO!   \n");
+        printf("======================================================================\n");
+        printf("Należy podać parametry -i oraz -o, żeby plik został poprawnie wczytany.\n");
+        printf("Przykład: ./program -i plik.txt -o wynik.txt\n");
+        printf("Użyj flagi -h, aby zobaczyć pełną instrukcję.\n");
+        printf("======================================================================\n");
         return 1;
     }
 
@@ -59,7 +76,19 @@ int main(int argc, char *argv[]) {
         printf("Podana nazwa: [%s] jest nieprawidłowa.\n", algorithm);
         printf("Dostępne opcje to: 'tutte' lub 'fruchterman'.\n");
         printf("============================================================\n");
-        return 4; // KOD BŁĘDU DLA NIEPRAWIDŁOWEGO ALGORYTMU
+        return 4;
+    }
+
+    // --- WERYFIKACJA FORMATU PLIKU WYJŚCIOWEGO ---
+    // LOGIKA: SPRAWDZAMY CZY FORMAT TO 'txt' LUB 'bin'
+    if (strcmp(format, "txt") != 0 && strcmp(format, "bin") != 0) {
+        printf("\n============================================================\n");
+        printf("   BŁĄD KRYTYCZNY: NIEPRAWIDŁOWY FORMAT PLIKU    \n");
+        printf("============================================================\n");
+        printf("Podany format: [%s] nie jest obsługiwany.\n", format);
+        printf("Dostępne opcje to: 'txt' (tekstowy) lub 'bin' (binarny).\n");
+        printf("============================================================\n");
+        return 11;
     }
 
     // --- WERYFIKACJA ISTNIENIA PLIKU WEJŚCIOWEGO ---
@@ -71,7 +100,7 @@ int main(int argc, char *argv[]) {
         printf("Plik wejściowy: [%s] nie istnieje lub ścieżka jest błędna.\n", input_path);
         printf("Upewnij się, że nazwa pliku i rozszerzenie są poprawne.\n");
         printf("============================================================\n");
-        return 3; // Nowy kod błędu dla nieprawidłowej ścieżki
+        return 3;
     }
 
     Graph g = { .nodes = NULL, .edges = NULL, .node_count = 0, .edge_count = 0, .width = 1000.0, .height = 1000.0 };
@@ -121,6 +150,12 @@ int main(int argc, char *argv[]) {
     } else {
         // KOMUNIKAT POTWIERDZAJĄCY SPÓJNOŚĆ
         printf("Sukces: Graf jest spójny. Przechodzę do obliczeń.\n");
+    }
+
+    // --- KOMUNIKAT O WYBORZE ALGORYTMU PRZED OBLICZENIAMI ---
+    if (!algo_provided) {
+        printf("\n>>> INFO: Nie wpisano parametru -a. Automatycznie wybrano algorytm: TUTTE. <<<\n");
+        printf(">>> INFO: Aby użyć innego układu, dodaj parametr: -a fruchterman. <<<\n");
     }
 
     int success = 0; // Flaga sukcesu dla całego procesu
@@ -180,11 +215,16 @@ int main(int argc, char *argv[]) {
             printf("\n------------------------------------------------------------------------------\n");
             printf(">>> SUKCES: Wynik został zapisany do pliku [%s] <<<\n", output_path);
             
-            // LOGIKA DYNAMICZNEGO KOMUNIKATU O WYBRANYM FORMACIE (TEXT/BIN)
-            if (strcmp(format, "bin") == 0) {
-                printf(">>> FORMAT: Plik BINARNY (.bin) <<<\n");
+            // LOGIKA DYNAMICZNEGO KOMUNIKATU O BRAKU FLAGI -f
+            if (format_provided) {
+                if (strcmp(format, "bin") == 0) {
+                    printf(">>> FORMAT: Plik BINARNY (.bin) <<<\n");
+                } else {
+                    printf(">>> FORMAT: Plik TEKSTOWY (.txt) <<<\n");
+                }
             } else {
-                printf(">>> FORMAT: Plik TEKSTOWY (.txt) <<<\n");
+                // ZMIANA: KOMUNIKAT WYŚWIETLANY, GDY UŻYTKOWNIK NIE WPISAŁ -f
+                printf(">>> INFO: Nie podano parametru -f bin. Zapisano domyślnie jako plik TEKSTOWY (.txt) <<<\n");
             }
         } else {
             fprintf(stderr, "Błąd: Nie udało się zapisać pliku wyjściowego!\n");
