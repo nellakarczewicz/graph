@@ -7,14 +7,18 @@
 /**
  * Funkcja pomocnicza: sprawdza, czy punkty są ułożone przeciwnie do ruchu wskazówek zegara.
  * Wykorzystywana do detekcji przecięć odcinków.
+ * Parametry wejściowe to współrzędne punktów 
+ * Zwraca: int (1 jeśli orientacja jest CCW, 0 w przeciwnym przypadku)
  */
 int ccw(double ax, double ay, double bx, double by, double cx, double cy) {
     return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax);
 }
 
 /**
- * Czy dwa odcinki (krawędzie) się przecinają?
+ * Funkcja sprawdzająca, czy dwa odcinki (x1,y1)-(x2,y2) oraz (x3,y3)-(x4,y4) przecinają się.
  * Implementacja algorytmu opartego na orientacji punktów (CCW).
+ * Parametry wejściowe to współrzędne punktów pierwszego i drugiego odcinka
+ * Zwraca: int (1 jeśli odcinki się przecinają, 0 jeśli nie)
  */
 int intersect(double x1, double y1, double x2, double y2, 
               double x3, double y3, double x4, double y4) {
@@ -89,13 +93,12 @@ void init_random_positions(Graph *graph) {
     double centerX = graph->width / 2.0;
     double centerY = graph->height / 2.0;
     
-    // Inicjalizacja generatora powinna być w main, ale upewniamy się tutaj
+    // Losowanie pozycji startowych w małym obszarze wokół środka 10x10
     for (int i = 0; i < graph->node_count; i++) {
-        // Startujemy w małym obszarze 10x10 na środku
-        // Dzięki temu siły odpychania "wypchną" graf symetrycznie na zewnątrz
+        // Losujemy współrzędne X i Y w zakresie [-5, 5] przesuniętym na środek
         graph->nodes[i].x = centerX + ((double)rand() / RAND_MAX * 10.0 - 5.0); // Losowanie X
         graph->nodes[i].y = centerY + ((double)rand() / RAND_MAX * 10.0 - 5.0); // Losowanie Y
-        // Wyzerowuje wektory przesunięcia na start
+        // Zerujemy wektory przesunięcia — będą nadpisywane w kolejnych iteracjach algorytmu
         graph->nodes[i].dx = 0;
         graph->nodes[i].dy = 0;
     }
