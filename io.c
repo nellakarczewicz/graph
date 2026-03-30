@@ -246,6 +246,24 @@ int validate_and_process(const char *filename)
             // Przygotowujemy czytelny opis krawędzi
             snprintf(data_buffer, sizeof(data_buffer), "Krawedz %s: %d -> %d (w: %.2f)", name, u_val, v_val, atof(w_str));
 
+            double w_val = atof(w_str);
+
+            // --- WALIDACJA WAGI (ZAKRES 0.1 - 100.0, FORMAT X.X) ---
+            int valid_weight_format = 0;
+            char *dot_ptr = strchr(w_str, '.');
+
+            // SPRAWDZAMY CZY JEST DOKŁADNIE JEDNA KROPKA I DOKŁADNIE JEDEN ZNAK PO NIEJ
+            if (dot_ptr != NULL && strlen(dot_ptr) == 2) {
+                valid_weight_format = 1;
+            }
+
+            if (!valid_weight_format || w_val < 0.1 || w_val > 100.0) {
+                printf("%-8d | %-45s | %-15s\n", line_num, data_buffer, "BŁĄD KRYTYCZNY");
+                printf("         | [STOP] WAGA MUSI BYĆ W FORMACIE X.X (NP. 1.4) I W ZAKRESIE [0.1, 100.0]!\n");
+                critical_errors++;
+            }
+            // --- KONIEC WALIDACJI WAGI ---
+
             // --- WERYFIKACJA CZY ID MIEŚCI SIĘ W ZAKRESIE 1-1000 ---
             if (u_val < 1 || u_val > 1000 || v_val < 1 || v_val > 1000) {
                 printf("%-8d | %-45s | %-15s\n", line_num, data_buffer, "BŁĄD KRYTYCZNY");
@@ -277,6 +295,8 @@ int validate_and_process(const char *filename)
         printf(" -> Separator danych to ŚREDNIK (;), a separator dziesiętny to KROPKA (.)\n");
 
         printf(" -> ID wierzchołków muszą mieścić się w przedziale od 1 do 1000.\n");
+
+        printf(" -> Waga musi być dodatnia, z jednym miejscem po kropce.\n");
 
         return -1;
     }
