@@ -121,22 +121,18 @@ int main(int argc, char *argv[]) {
         }
     } 
     else if (strcmp(algorithm, "fruchterman") == 0) {
-        // Logika Fruchterman: Sprawdzenie potencjalnej planarnosci (Kod 7) i spojnosci
-        if (!is_potentially_planar(&g)) {
-            printf("[INFO] Graf jest nieplanarny (E > 3V-6). Jeśli chcesz, aby program wygenerował graf planarny, to uruchom go ponownie.\n");
-            free_graph(&g);
-            return 7;
-        }
-
-
         // Mechanizm wielokrotnych prob: Resetowanie pozycji i ponowna symulacja fizyczna
         int attempts = 0;
-        printf("Uruchamiam symulację Fruchtermana (max 3000 prób)...\n");
+        printf("\nUruchamiam symulację Fruchtermana (max 3000 prób)...\n");
         while (!success && attempts < 3000) {
             attempts++;
             init_random_positions(&g);
             run_fruchterman(&g, 1000, 30.0);
-            if (is_layout_planar(&g)) success = 1;
+            
+            if (is_layout_planar(&g)) {
+                success = 1;
+                printf("Sukces! Graf planarny (Fruchterman). Wygenerowany po %d probach.\n", attempts);
+            }
         }
 
         // DODANO: KOMUNIKAT O PORAZCE DLA FRUCHTERMANA PO WYCZERPANIU PROB

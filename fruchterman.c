@@ -29,6 +29,15 @@ int intersect(double x1, double y1, double x2, double y2,
  * Zwraca: int (1 jeśli układ jest planarny - brak przecięć, 0 w przypadku znalezienia chociaż jednego przecięcia)
  */
 int is_layout_planar(Graph *g) {
+    // 1. Warunek teoretyczny Eulera dla grafów prostych (V >= 3)
+    // Jeśli krawędzi jest więcej niż 3*V - 6, graf NIE MOŻE być planarny.
+    if (g->node_count >= 3) {
+        if (g->edge_count > (3 * g->node_count - 6)) {
+            return 0; // Zbyt gęsty graf - teoretycznie nieplanarny
+        }
+    }
+
+    // 2. Warunek geometryczny - brak przecięć krawędzi w aktualnym układzie
     for (int i = 0; i < g->edge_count; i++) {
         for (int j = i + 1; j < g->edge_count; j++) {
             int u1 = g->edges[i].u_idx, v1 = g->edges[i].v_idx;
