@@ -80,7 +80,8 @@ int main(int argc, char *argv[]) {
     }
 
     // KOMUNIKAT O ROZPOCZĘCIU SPRAWDZANIA SPÓJNOŚCI
-    printf("Sprawdzanie spójności grafu...\n");
+    printf("\nSprawdzanie spójności grafu za pomocą algorytmu DFS ...\n");
+
     // Logika: Sprawdzenie algorytmem DFS, czy graf nie jest rozbity na czesci (Kod 9)
     if (!is_graph_connected(&g)) {
         printf("\n============================================================\n");
@@ -103,13 +104,18 @@ int main(int argc, char *argv[]) {
     // --- FAZA 3: OBLICZENIA (LOGIKA WYBORU ALGORYTMU) ---
 
     if (strcmp(algorithm, "tutte") == 0) {
+        printf("\nUruchamiam algorytm Tutte'a...\n");
         compute_tutte_layout(&g); 
+
+        // KOMUNIKAT O SPRAWDZANIU PLANARNOSCI
+        printf("\nSprawdzanie planarności wygenerowanego układu (Tutte)...\n");
+
         if (is_tutte_layout_planar(&g)) {
             printf("Sukces! Graf planarny (Tutte).\n");
             success = 1;
         } else {
             printf("\n============================================================\n");
-            printf("   KOMUNIKAT: WYNIK TUTTE NIE JEST PLANARNY    \n");
+            printf("   PORAŻKA: WYNIK TUTTE NIE JEST PLANARNY    \n");
             printf("============================================================\n");
             printf("Zapis pliku został zablokowany.\n"); 
         }
