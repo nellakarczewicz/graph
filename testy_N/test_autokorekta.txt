@@ -1,3 +1,3 @@
-krawedz1;1;2;1,50
-krawedz2;2;3;2,75
-krawedz3;3;1;0,99
+krawedz1;1;2;1,5
+krawedz2;2;3;2,7
+krawedz3;3;1;0,9

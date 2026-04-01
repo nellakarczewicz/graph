@@ -146,32 +146,23 @@ int main(int argc, char *argv[]) {
         return 5;
     }
 
-    // WALIDACJA MINIMALNEJ LICZBY KRAWĘDZI
-    // LOGIKA: GRAF MUSI MIEĆ CO NAJMNIEJ 2 KRAWĘDZIE, ABY SYMULACJA MIAŁA SENS
-    if (g.edge_count < 2) {
-        printf("\n============================================================\n");
-        printf("   BŁĄD: ZA MAŁA LICZBA KRAWĘDZI    \n");
-        printf("============================================================\n");
-        printf("Napotkano %d krawędzi.\n", g.edge_count);
-        printf("-> Potrzeba >= 2 krawędzi, aby poprawnie wyznaczyć uklad. \n");
-        printf("============================================================\n");
-        free_graph(&g);
-        return 6; // Wykorzystujemy istniejący kod błędu dla problemów z wierzchołkami
-    }
+    // --- FAZA 2: WERYFIKACJA STRUKTURY (MINIMALNE WYMAGANIA) ---
 
-    // --- FAZA 2: WERYFIKACJA STRUKTURY I SPOJNOSCI ---
-
-    // WALIDACJA LICZBY WIERZCHOŁKÓW
-    // LOGIKA: GRAF PLANARNY WYMAGA MINIMUM 3 WIERZCHOŁKÓW DO STWORZENIA KONSTRUKCJI GEOMETRYCZNEJ
-    if (g.node_count < 3) {
+    // Sprawdzanie wierzchołków i krawędzi
+    // Graf musi mieć minimum 3 wierzchołki i 2 krawędzie, aby algorytmy mogły zbudować układ.
+    if (g.node_count < 3 || g.edge_count < 2) {
         printf("\n============================================================\n");
-        printf("   BŁĄD: ZA MAŁA LICZBA WIERZCHOŁKÓW    \n");
+        printf("   BŁĄD: NIEWYSTARCZAJĄCA LICZBA ELEMENTÓW GRAFU    \n");
         printf("============================================================\n");
-        printf("Napotkano %d wierzchołków.\n", g.node_count);
-        printf("-> Potrzeba >= 3 wierzchołków, by wygenerować graf planarny.\n");
+        printf("Statystyki wczytanego pliku:\n");
+        printf("-> Wierzchołki: %d (wymagane >= 3)\n", g.node_count);
+        printf("-> Krawędzie:   %d (wymagane >= 2)\n", g.edge_count);
+        printf("\nPOWÓD: Graf jest zbyt mały, aby wyznaczyć układ planarny.\n");
+        printf("Upewnij się, że plik [%s] zawiera poprawny graf.\n", input_path);
         printf("============================================================\n");
+        
         free_graph(&g);
-        return 6; 
+        return 6; // Kod błędu dla nieprawidłowego rozmiaru grafu
     }
 
     // KOMUNIKAT O ROZPOCZĘCIU SPRAWDZANIA SPÓJNOŚCI
