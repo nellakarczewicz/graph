@@ -6,7 +6,6 @@
 #include "io.h"
 
 /**
-
 * Funkcja sprawdzająca spójność grafu za pomocą algorytmu przeszukiwania (DFS).
 * @param g wskaźnik na strukturę Graph zawierającą listę wierzchołków i krawędzi
 * @return int:
@@ -218,15 +217,11 @@ int validate_and_process(const char *filename)
 
             // --- WALIDACJA POLA U ---
             for (int i = 0; u_str[i]; i++)
-                if (!isdigit((unsigned char)u_str[i]) &&
-                    !isspace((unsigned char)u_str[i]))
-                    line_error = 1;
+                if (!isdigit((unsigned char)u_str[i])) line_error = 1;
 
             // --- WALIDACJA POLA V ---
             for (int i = 0; v_str[i]; i++)
-                if (!isdigit((unsigned char)v_str[i]) &&
-                    !isspace((unsigned char)v_str[i]))
-                    line_error = 1;
+                if (!isdigit((unsigned char)u_str[i])) line_error = 1;
 
             // --- WALIDACJA POLA W (waga) ---
             int dots = 0;
@@ -326,6 +321,7 @@ int validate_and_process(const char *filename)
         printf("\nSTOP! Znaleziono %d bledow krytycznych w strukturze pliku.\n", critical_errors);
         printf(" -> INFO: Poprawny format to: Nazwa;U;V;Waga\n");
         printf(" -> Separator danych to ŚREDNIK (;), a separator dziesiętny to KROPKA (.)\n");
+        printf(" -> Nazwa krawędzi: max 10 znaków (a-z, 0-9), brak spacji i PL znaków.\n");
         printf(" -> ID wierzchołków muszą mieścić się w przedziale od 1 do 1000.\n");
         printf(" -> Waga musi być dodatnia, z jednym miejscem po kropce.\n");
         return -1;
@@ -487,6 +483,11 @@ int read_graph(Graph *g, const char *filename)
                 g->edges[g->edge_count].v_idx = v_idx;
                 g->edges[g->edge_count].weight = w;
                 g->edge_count++;
+            }
+            else if (is_duplicate)
+            {
+                // Info o pominięciu
+                printf("Linia %d: [INFO] Pominięto duplikat krawędzi (%d-%d).\n", line_num, u_id, v_id);
             }
         }
     }

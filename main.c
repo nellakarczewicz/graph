@@ -132,8 +132,8 @@ int main(int argc, char *argv[]) {
         printf("\n=========================================================================\n");
         printf("   PRZETWARZANIE PRZERWANE: BŁĘDNA STRUKTURA GRAFU    \n");
         printf("=========================================================================\n");
-        printf("Powód: Wykryto niedozwolone pętle własne lub inne błędy w strukturze grafu.\n");
-        printf("Sprawdź raport powyżej i popraw plik wejściowy.\n");
+        printf("Powód: Wykryto błędy w strukturze grafu (np. niepoprawny format lub \n");
+        printf("niedozwolone pętle własne). Sprawdź raport powyżej i popraw plik wejściowy.\n");
         printf("=========================================================================\n");
         return 12;
     }
