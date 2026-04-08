@@ -136,7 +136,7 @@ void print_usage(char *prog_name) {
         printf("Podany format: [%s] nie jest obsługiwany.\n", format);
         printf("Dostępne opcje to: 'txt' (tekstowy) lub 'bin' (binarny).\n");
         printf("============================================================\n");
-        return 11;
+        return 9;
     }
 
     // --- WERYFIKACJA ISTNIENIA PLIKU WEJŚCIOWEGO ---
@@ -162,7 +162,7 @@ void print_usage(char *prog_name) {
         printf("Powód: Wykryto błędy w strukturze grafu (np. niepoprawny format lub \n");
         printf("niedozwolone pętle własne). Sprawdź raport powyżej i popraw plik wejściowy.\n");
         printf("=========================================================================\n");
-        return 12;
+        return 10;
     }
 
     if (read_graph(&g, input_path) != 0) return 2;
@@ -206,7 +206,7 @@ void print_usage(char *prog_name) {
         printf("============================================================\n");
         
         free_graph(&g);
-        return 9; 
+        return 8; 
     } else {
         // KOMUNIKAT POTWIERDZAJĄCY SPÓJNOŚĆ
         printf("Sukces: Graf jest spójny. Przechodzę do obliczeń.\n");
@@ -236,7 +236,8 @@ void print_usage(char *prog_name) {
             printf("\n============================================================\n");
             printf("   PORAŻKA: WYNIK TUTTE NIE JEST PLANARNY    \n");
             printf("============================================================\n");
-            printf("Zapis pliku został zablokowany.\n"); 
+            printf("Zapis pliku został zablokowany.\n");
+            return 7;
         }
     } 
     else if (strcmp(algorithm, "fruchterman") == 0) {
@@ -264,6 +265,7 @@ void print_usage(char *prog_name) {
             printf("============================================================\n");
             printf("Po 3000 prób algorytm FR nie wyeliminował przecięć.\n");
             printf("Zapis pliku wyjściowego anulowany. Spróbuj ponownie.\n");
+            return 7;
         }
     }
 
