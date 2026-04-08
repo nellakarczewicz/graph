@@ -23,55 +23,55 @@ void print_usage(char *prog_name) {
  * arg wyjscia: 0 (sukces), kody bledow 1-10 (porazka)
  * logika/funkcja: Glowny kontroler programu; zarzadza przeplywem danych miedzy walidacja, odczytem, obliczeniami a zapisem.
  */
-int main(int argc, char *argv[]) {
-    // --- ROZBUDOWANA OBSLUGA FLAGI POMOCY (-h) ---
-    if (argc > 1) {
-        if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0 || 
-            strcmp(argv[1], "-help") == 0 || strcmp(argv[1], "/h") == 0 || 
-            strcmp(argv[1], "help") == 0) {
-            
-            printf("==============================================================================\n");
-            printf("                INSTRUKCJA OBSLUGI PROGRAMU I ZASADY PISOWNI\n");
-            printf("==============================================================================\n");
-            printf("Uzycie: ./program -i <wejscie> -o <wyjscie> -a <tutte|fruchterman> [-f <txt|bin>]\n\n");
-            printf("OPIS PROGRAMU:\n");
-            printf("Narzędzie służy do automatycznego rozmieszczania wierzchołków grafu w 2D.\n");
-            printf("Implementuje dwa podejścia: matematyczny algorytm Tutte'a (barycentryczny)\n");
-            printf("oraz fizyczną symulację Fruchtermana-Reingolda (model siłowy).\n");
-            printf("Program automatycznie dba o planarność, eliminując przecięcia krawędzi.\n\n");
-            printf("ZASADY PISOWNI PLIKU WEJSCIOWEGO:\n");
-            printf("1. FORMAT LINII: Nazwa;U;V;Waga. Dopuszczalny separator danych: ';')\n");
-            printf("oraz separator dziesiętny: '.' lub ','.)\n");
-            
-            printf("2. NAZWA KRAWEDZI:\n");
-            printf("   - Maksymalnie 10 znakow.\n");
-            printf("   - Dozwolone  litery (a-z) i cyfry (0-9).\n");
-            printf("   - BEZ znakow diakrytycznych (polskie: a, e, slaskie, niemieckie, itp.).\n");
-            printf("   - Inne znaki (spacje, taby, znaki specjalne) = BLAD FORMATU.\n");
-            
-            printf("3. IDENTYFIKATORY (U, V):\n");
-            printf("   - Liczby calkowite dodatnie w zakresie 1 - 1000.\n");
-            printf("   - Brak znakow lub znaki nienumeryczne = BLAD FORMATU.\n");
-            printf("   - Zakaz petli wlasnych (U musi byc rozne od V).\n");
-            
-            printf("4. WAGA:\n");
-            printf("   - Liczba dziesietna w zakresie do 100.0.\n");
-            printf("   - Dokladnosc: 1 liczba po przecinku (np. 10.5).\n");
-            printf("   - Automatyczna zamiana przecinka na kropke dziesietna.\n");
-            
-            printf("5. STRUKTURA PLIKU:\n");
-            printf("   - Linie zaczynajace sie od '#' NIE sa ignorowane (traktowane jako blad).\n");
-            printf("   - Linie puste (tylko biale znaki) sa pomijane.\n");
-            printf("   - Kazda krawedz musi posiadac nazwe (brak nazwy przed separatorem = blad).\n");
-            
-            printf("6. WYMAGANIA TOPOLOGICZNE:\n");
-            printf("   - Graf musi byc SPOJNY (sprawdzane algorytmem DFS).\n");
-            printf("   - Minimalna liczba wezlow: 3 | Minimalna liczba krawedzi: 2.\n");
-            printf("   - Graf musi spelniac warunek planarnosci (E <= 3V - 6).\n");
-            printf("==============================================================================\n");
-            return 0; 
+    int main(int argc, char *argv[]) {
+        // --- ROZBUDOWANA OBSLUGA FLAGI POMOCY (-h) ---
+        for (int i = 1; i < argc; i++) {
+            if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0 || 
+                strcmp(argv[i], "-help") == 0 || strcmp(argv[i], "/h") == 0 || 
+                strcmp(argv[i], "help") == 0 || strcmp(argv[i], "-?") == 0) {
+                
+                printf("==============================================================================\n");
+                printf("                INSTRUKCJA OBSLUGI PROGRAMU I ZASADY PISOWNI\n");
+                printf("==============================================================================\n");
+                printf("Uzycie: ./program -i <wejscie> -o <wyjscie> -a <tutte|fruchterman> [-f <txt|bin>]\n\n");
+                printf("OPIS PROGRAMU:\n");
+                printf("Narzędzie służy do automatycznego rozmieszczania wierzchołków grafu w 2D.\n");
+                printf("Implementuje dwa podejścia: matematyczny algorytm Tutte'a (barycentryczny)\n");
+                printf("oraz fizyczną symulację Fruchtermana-Reingolda (model siłowy).\n");
+                printf("Program automatycznie dba o planarność, eliminując przecięcia krawędzi.\n\n");
+                printf("ZASADY PISOWNI PLIKU WEJSCIOWEGO:\n");
+                printf("1. FORMAT LINII: Nazwa;U;V;Waga. Dopuszczalny separator danych: ';')\n");
+                printf("oraz separator dziesiętny: '.' lub ','.)\n");
+                
+                printf("2. NAZWA KRAWEDZI:\n");
+                printf("   - Maksymalnie 10 znakow.\n");
+                printf("   - Dozwolone  litery (a-z) i cyfry (0-9).\n");
+                printf("   - BEZ znakow diakrytycznych (polskie: a, e, slaskie, niemieckie, itp.).\n");
+                printf("   - Inne znaki (spacje, taby, znaki specjalne) = BLAD FORMATU.\n");
+                
+                printf("3. IDENTYFIKATORY (U, V):\n");
+                printf("   - Liczby calkowite dodatnie w zakresie 1 - 1000.\n");
+                printf("   - Brak znakow lub znaki nienumeryczne = BLAD FORMATU.\n");
+                printf("   - Zakaz petli wlasnych (U musi byc rozne od V).\n");
+                
+                printf("4. WAGA:\n");
+                printf("   - Liczba dziesietna w zakresie do 100.0.\n");
+                printf("   - Dokladnosc: 1 liczba po przecinku (np. 10.5).\n");
+                printf("   - Automatyczna zamiana przecinka na kropke dziesietna.\n");
+                
+                printf("5. STRUKTURA PLIKU:\n");
+                printf("   - Linie zaczynajace sie od '#' NIE sa ignorowane (traktowane jako blad).\n");
+                printf("   - Linie puste (tylko biale znaki) sa pomijane.\n");
+                printf("   - Kazda krawedz musi posiadac nazwe (brak nazwy przed separatorem = blad).\n");
+                
+                printf("6. WYMAGANIA TOPOLOGICZNE:\n");
+                printf("   - Graf musi byc SPOJNY (sprawdzane algorytmem DFS).\n");
+                printf("   - Minimalna liczba wezlow: 3 | Minimalna liczba krawedzi: 2.\n");
+                printf("   - Graf musi spelniac warunek planarnosci (E <= 3V - 6).\n");
+                printf("==============================================================================\n");
+                return 0; 
+            }
         }
-    }
     srand(time(NULL)); // Inicjalizacja generatora liczb losowych dla algorytmu Fruchtermanna
     int opt;
     char *input_path = NULL;
