@@ -61,16 +61,26 @@ The validation module (io.c) requires strict adherence to the following data for
 Diagnostics and Exit Codes
 
 The program returns the following exit codes upon failure to help with automated testing and debugging:
-Code	Error Name	Cause
-1	Argument Error	Missing -i or -o flags, or invalid output format specified.
-2	Read Error	Memory allocation failure or unable to open the file.
-3	Path Error	Input file does not exist or the path is incorrect.
-4	Algorithm Error	Specified algorithm name is not tutte or fruchterman.
-5	Empty File	Input file contains no valid edges or only whitespace.
-6	Size Error	Graph has fewer than 3 nodes or fewer than 2 edges.
-8	Planarity Error	Resulting layout contains crossings (Tutte) or FR failed after 3000 attempts.
-9	Connectivity Error	Disconnected graph components detected (failed DFS connectivity test).
-10 / 12	Structure Error	Invalid data format (e.g., names too long, self-loops, invalid characters).
+
+Code	Error -- Name	-- Cause
+
+1	    -- Argument Error --    	Missing -i or -o flags, or invalid output format specified.
+
+2	    -- Read Error --    	Memory allocation failure or unable to open the file.
+
+3	    -- Path Error --    	Input file does not exist or the path is incorrect.
+
+4	    -- Algorithm Error --    	Specified algorithm name is not tutte or fruchterman.
+
+5	    -- Empty File --    	Input file contains no valid edges or only whitespace.
+
+6	    -- Size Error --    	Graph has fewer than 3 nodes or fewer than 2 edges.
+
+8	    -- Planarity Error --    	Resulting layout contains crossings (Tutte) or FR failed after 3000 attempts.
+
+9	    -- Connectivity Error --    	Disconnected graph components detected (failed DFS connectivity test).
+
+10 / 12	    -- Structure Error	Invalid --     data format (e.g., names too long, self-loops, invalid characters).
 
 
 Modular Architecture
