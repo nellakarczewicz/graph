@@ -1,86 +1,86 @@
 Graph Layout Engine (C Edition)
+Description
 
-A command-line utility for the automated 2D positioning of graph vertices using barycentric methods and force-directed physical models.
-
-
+This tool is designed for the automated 2D positioning of graph vertices. It implements two distinct approaches: the mathematical Tutte barycentric method and the Fruchterman-Reingold force-directed physical simulation. The engine ensures the planarity of the final layout by actively detecting and eliminating edge crossings.
 Compilation
 
-The project can be compiled in two ways:
-1. Using Makefile (Recommended)
-//Bash
-make clean
-make
-
-2. Using GCC Compiler Directly
-
-If the Makefile is unavailable, use the following command (the math library -lm is required):
-//Bash
+To build the program, use the GCC compiler with the math library linked:
 
 gcc -Wall -Wextra -std=c11 main.c layout_tutte.c fruchterman.c io.c -o program -lm
 
-
-
-
 Usage and Syntax
-The program is controlled via command-line arguments. Use the -h flag to display help.
-Execution Syntax:
-//Bash
 
-./program -i <input.txt> -o <output> -a <algorithm> [-f <format>]
+./program -i <input.txt> -o <output> -a <tutte|fruchterman> [-f <txt|bin>]
 
-Parameter Description:
+CLI Parameters:
 
-    -i [path]: Path to the input file containing the edge list.
+    -i: (Required) Path to the input file.
 
-    -o [path]: Path for the output file.
+    -o: (Required) Path to the output file.
 
-    -a [tutte | fruchterman]: Choice of layout algorithm.
+    -a: (Required) Choice of algorithm: tutte or fruchterman.
 
-    -f [txt | bin]: Export data format (defaults to txt).
+    -f: (Optional) Export format: txt (default) or bin.
 
-    -h: Displays the user manual and input file formatting rules.
-
-
-
+    -h: Displays detailed instructions and input formatting rules.
 
 Input File Formatting Rules
 
-The input module (io.c) performs strict data validation. The file must adhere to the following technical criteria:
+The validation module (io.c) requires strict adherence to the following data format:
 
-    Line Structure:
+    Line Structure: Edge_Name;Node_U;Node_V;Weight (supported separators: ; or ,).
 
-    Edge_Name;Node_U;Node_V;Weight
+    Edge Name:
 
-    Field Requirements:
-        Edge Name:
-            Maximum length: 10 characters.
-            Allowed characters: Lowercase Latin letters (a-z) and digits (0-9) only.
-            Prohibited: Spaces, uppercase letters, special characters, and diacritics.
-        Vertex Identifiers (Node_U, Node_V):
-            Type: Positive integers in the range 1 - 1000.
-            Prohibited: Self-loops (Node_U must be different from Node_V).
-        Edge Weight:
-            Format: Decimal number (e.g., 1.50).
-            The program performs automatic decimal separator correction (comma to dot conversion).
-        Separators and Special Characters:
-            Accepted column separators: Semicolon (;) or comma (,).
-            Lines starting with # and empty lines are ignored.
+        Maximum 10 characters.
 
-Diagnostics and Error Codes
+        Allowed: lowercase a-z and digits 0-9.
 
-In case of structural or mathematical errors, the program terminates and returns a specific exit code:
-Code	Meaning	                    Cause
-6	    Size Error	                Insufficient number of vertices (< 3) or edges (< 2).
-7	    Non-planar	                Euler's formula violation (E>3V−6) – graph is too dense.
-8	    Optimization Failure	    Fruchterman-Reingold algorithm failed after 3000 attempts.
-9	    Non-connected	            Disconnected graph components detected via DFS.
-10	    Format Error	            Input data inconsistent with specification (e.g., letters in IDs).
+        Prohibited: spaces, uppercase letters, and diacritics (e.g., Polish ą, ę, German umlauts, etc.).
+
+        Missing names or special characters will trigger a format error.
+
+    Vertex Identifiers (U, V):
+
+        Positive integers in the range 1 - 1000.
+
+        Self-loops (U=V) are strictly prohibited.
+
+    Edge Weight:
+
+        Decimal number up to 100.0.
+
+        The program automatically corrects the decimal separator (replaces , with .).
+
+    File Structure:
+
+        Empty lines are skipped.
+
+        Lines starting with # are not ignored and are treated as format errors.
+
+Diagnostics and Exit Codes
+
+The program returns the following exit codes upon failure to help with automated testing and debugging:
+Code	Error Name	Cause
+1	Argument Error	Missing -i or -o flags, or invalid output format specified.
+2	Read Error	Memory allocation failure or unable to open the file.
+3	Path Error	Input file does not exist or the path is incorrect.
+4	Algorithm Error	Specified algorithm name is not tutte or fruchterman.
+5	Empty File	Input file contains no valid edges or only whitespace.
+6	Size Error	Graph has fewer than 3 nodes or fewer than 2 edges.
+8	Planarity Error	Resulting layout contains crossings (Tutte) or FR failed after 3000 attempts.
+9	Connectivity Error	Disconnected graph components detected (failed DFS connectivity test).
+10 / 12	Structure Error	Invalid data format (e.g., names too long, self-loops, invalid characters).
 
 
 Modular Architecture
 
-    graph.h: Definitions for Node, Edge, and Graph structures.
-    io.c / io.h: Data parser, syntax validation, and DFS algorithm.
-    layout_tutte.c: Implementation of the deterministic barycentric method.
-    fruchterman.c: Implementation of the force-directed model with CCW intersection testing.
-    main.c: Coordination of data flow, CLI handling, and "Retry Logic" for stochastic processes.
+    graph.h: Core data structures for Node, Edge, and Graph.
+
+    io.c / io.h: Data parsing, syntax validation, and DFS connectivity analysis.
+
+    layout_tutte.c: Deterministic barycentric layout implementation.
+
+    fruchterman.c: Force-directed physical simulation and real-time CCW edge crossing detection.
+
+    main.c: CLI orchestration, validation flow, and "Retry Logic" loop.
