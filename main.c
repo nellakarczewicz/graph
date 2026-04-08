@@ -40,7 +40,8 @@ int main(int argc, char *argv[]) {
             printf("oraz fizyczną symulację Fruchtermana-Reingolda (model siłowy).\n");
             printf("Program automatycznie dba o planarność, eliminując przecięcia krawędzi.\n\n");
             printf("ZASADY PISOWNI PLIKU WEJSCIOWEGO:\n");
-            printf("1. FORMAT LINII: Nazwa;U;V;Waga (Dopuszczalne separatory: ';' lub ',')\n");
+            printf("1. FORMAT LINII: Nazwa;U;V;Waga. Dopuszczalny separator danych: ';')\n");
+            printf("oraz separator dziesiętny: '.' lub ','.)\n");
             
             printf("2. NAZWA KRAWEDZI:\n");
             printf("   - Maksymalnie 10 znakow.\n");
