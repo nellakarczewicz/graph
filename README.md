@@ -76,11 +76,13 @@ Code	Error -- Name	-- Cause
 
 6	    -- Size Error --    	Graph has fewer than 3 nodes or fewer than 2 edges.
 
-8	    -- Planarity Error --    	Resulting layout contains crossings (Tutte) or FR failed after 3000 attempts.
+7	    -- Planarity Error --    	Resulting layout contains crossings (Tutte) or FR failed after 3000 attempts.
 
-9	    -- Connectivity Error --    	Disconnected graph components detected (failed DFS connectivity test).
+8	    -- Connectivity Error --    	Disconnected graph components detected (failed DFS connectivity test).
 
-10 / 12	    -- Structure Error	Invalid --     data format (e.g., names too long, self-loops, invalid characters).
+9       -- Output File Format Error --    	An invalid data format was provided (txt or bin required).
+
+10      -- Structure Error Invalid --     Data format (e.g., names too long, self-loops, invalid characters).
 
 
 Modular Architecture
