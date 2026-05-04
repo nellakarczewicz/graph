@@ -1,0 +1,268 @@
+\documentclass[12pt,a4paper]{article}
+
+% --- Pakiety dla języka polskiego i profesjonalnego składu ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=false,       % false: ramki; true: kolorowy tekst
+    pdfborder={0 0 0},     % ustawia szerokość ramki na 0 (całkowicie znika)
+}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows}
+% --- Konfiguracja stylów dla listingów kodu ---
+\lstset{
+    backgroundcolor=\color{gray!5},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    captionpos=b,
+    commentstyle=\color{green!60!black},
+    keywordstyle=\color{blue},
+    stringstyle=\color{orange},
+    frame=single,
+    showstringspaces=false,
+    literate={ą}{{\k{a}}}1 {ć}{{\'c}}1 {ę}{{\k{e}}}1 {ł}{{\l{}}}1 {ń}{{\'n}}1 {ó}{{\'o}}1 {ś}{{\'s}}1 {ź}{{\'z}}1 {ż}{{\.z}}1
+}
+
+\title{Dokumentacja Projektowa:\\Generowanie Grafów Planarnych}
+\author{Aleksandra Rybałko, Nella Karczewicz}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+
+\tableofcontents
+\newpage
+
+\section{Wstęp i Architektura Systemu}
+\subsection{Przedmiot Projektu}
+Projekt "Graph Layout Engine" to specjalistyczne narzędzie konsolowe (CLI), którego zadaniem jest transformacja abstrakcyjnej listy krawędzi grafu w czytelną reprezentację geometryczną 2D. System kładzie szczególny nacisk na poprawność matematyczną (planarność) oraz stabilność działania przy błędnych danych wejściowych.
+
+\subsection{Modułowa Budowa Programu}
+Kod został podzielony na niezależne jednostki logiczne, co zapewnia wysoką czytelność i łatwość konserwacji:
+\begin{itemize}[label=\textbullet]
+    \item \textbf{graph.h}: Centralny punkt definicji struktur. Zawiera opisy typów \texttt{Node}, \texttt{Edge} oraz \texttt{Graph}, stanowiące wspólny interfejs dla całego systemu.
+    \item \textbf{io.c / io.h}: Moduł wejścia/wyjścia. Odpowiada za niskopoziomową obsługę plików, dwufazową walidację składniową, sanityzację danych oraz eksport wyników (TXT/BIN).
+    \item \textbf{layout\_tutte.c}: Implementacja deterministycznego algorytmu barycentrycznego oraz geometrycznych testów przecięć krawędzi (CCW).
+    \item \textbf{fruchterman.c}: Implementacja heurystycznego modelu siłowego wraz z mechanizmami grawitacji i chłodzenia układu.
+    \item \textbf{main.c}: Moduł sterujący. Zarządza logiką CLI, koordynuje przepływ danych i realizuje walidację argumentów wywołania.
+\end{itemize}
+
+\section{Szczegółowa Analiza Algorytmów}
+
+\subsection{Algorytm Tutte'a (Metoda Barycentryczna)}
+Metoda ta stanowi fundament deterministycznego podejścia do wizualizacji grafów planarnych. Opiera się na założeniu, że graf trójspójny narysowany z wypukłą ramą zewnętrzną osiągnie stan bezkolizyjny, jeśli każdy wierzchołek wewnętrzny znajdzie się w środku ciężkości swoich sąsiadów.
+
+\paragraph{Logika i Implementacja:} 
+Współrzędne wierzchołków ruchomych $v_i$ są wyznaczane jako średnia arytmetyczna pozycji ich sąsiadów. Proces ten realizowany jest poprzez 200 iteracji relaksacji układu:
+\[ x_i = \frac{1}{|Adj(v_i)|} \sum_{j \in Adj(v_i)} x_j, \quad y_i = \frac{1}{|Adj(v_i)|} \sum_{j \in Adj(v_i)} y_j \]
+
+Stabilność geometryczną zapewnia tzw. "sztywna rama" – cztery wybrane węzły są blokowane na planie koła, co wymusza wypukłość całego layoutu i zapobiega nakładaniu się krawędzi.
+
+
+\subsection{Algorytm Fruchterman-Reingold (Model Siłowy)}
+Algorytm ten stanowi realizację heurystyki fizycznej, wykorzystującej analogię układu cząsteczek i sprężyn. W przeciwieństwie do deterministycznej metody Tutte'a, jest to proces stochastyczny, dążący do znalezienia konfiguracji o najniższej energii potencjalnej poprzez symulację oddziaływań międzywęzłowych.
+
+
+
+\paragraph{Dynamika Oddziaływań:}
+Fundamentem algorytmu jest balans sił, definiowany przez stałą optymalnej odległości $k$, zależną od powierzchni obszaru roboczego ($Area$) oraz liczby wierzchołków ($|V|$):
+\[ k = \sqrt{\frac{Area}{|V|}} \]
+W każdej iteracji na wierzchołki działają dwa przeciwstawne rodzaje sił:
+\begin{itemize}
+    \item \textbf{Siła odpychania ($f_r$):} Obliczana dla każdej pary węzłów, zapobiega ich nadmiernemu skupianiu: $f_r(d) = \frac{k^2}{d}$.
+    \item \textbf{Siła przyciągania ($f_a$):} Działająca wyłącznie wzdłuż zdefiniowanych krawędzi, dążąca do skrócenia połączeń: $f_a(d) = \frac{d^2}{k}$.
+\end{itemize}
+
+\paragraph{Optymalizacja i Simulated Annealing:}
+Stabilizację układu zapewnia mechanizm „chłodzenia” (\textit{Simulated Annealing}). Wprowadza on parametr temperatury $t$, który ogranicza maksymalne przesunięcie wierzchołków w jednym kroku. Temperatura maleje geometrycznie w każdej iteracji:
+\[ t_{new} = t_{old} \cdot 0.95 \]
+Proces ten pozwala na swobodną eksplorację przestrzeni w początkowej fazie (wysoka temperatura) oraz precyzyjne dociągnięcie układu do punktu równowagi w fazie końcowej (niska temperatura).
+
+\subsection{Weryfikacja Planarności i Mechanizm Bezkolizyjny}
+Ponieważ klasyczny model siłowy nie gwarantuje braku przecięć, w niniejszym projekcie zaimplementowano autorski moduł weryfikacji post-procesowej oparty na teście orientacji trzech punktów (CCW – Counter-Clockwise).
+
+\paragraph{Wymuszanie planarności:}
+W celu uzyskania statusu \texttt{is\_layout\_planar == 1}, program integruje test geometryczny z mechanizmami korygującymi:
+\begin{itemize}
+    \item \textbf{Retry Logic:} Jeśli test CCW wykaże kolizje, system restartuje obliczenia z nowym rozkładem losowym (do 3000 prób), co pozwala wyjść z lokalnych minimów energetycznych.
+    \item \textbf{Wektor grawitacji:} Dodatkowa siła dociągająca do centrum zapobiega nadmiernemu rozproszeniu wierzchołków, ułatwiając znalezienie układu bezkolizyjnego.
+    \item \textbf{Bezpieczeństwo danych:} Mechanizm ten gwarantuje, że plik wynikowy zostanie utworzony wyłącznie dla layoutu matematycznie poprawnego.
+\end{itemize}
+\newpage
+\section{Przepływ Danych i Walidacja}
+
+
+\subsection{Schemat Przetwarzania Danych}
+
+\begin{center}
+\begin{tikzpicture}[node distance=2cm]
+
+% Definicja ulepszonych stylów
+\tikzstyle{startstop} = [rectangle, rounded corners, minimum width=3.5cm, minimum height=1cm,text centered, draw=black, fill=red!20]
+\tikzstyle{process} = [rectangle, minimum width=4.5cm, minimum height=1cm, text centered, draw=black, fill=orange!20]
+\tikzstyle{decision} = [diamond, aspect=2, minimum width=3.5cm, minimum height=1cm, text centered, draw=black, fill=green!20]
+\tikzstyle{arrow} = [thick,->,>=stealth]
+
+% Rysowanie bloków z większymi odstępami
+\node (start) [startstop] {Start (Parametry CLI)};
+\node (io) [process, below of=start] {Parser I/O i Sanityzacja};
+\node (logic) [process, below of=io] {Weryfikacja Topologii (DFS)};
+\node (alg) [process, below of=logic] {Obliczenia (Tutte / FR)};
+\node (check) [decision, below of=alg, yshift=-0.8cm] {Czy planarny?};
+\node (save) [process, right of=check, xshift=4cm] {Eksport danych (TXT/BIN)};
+\node (stop) [startstop, below of=save] {Koniec programu};
+
+% Łączenie bloków strzałkami
+\draw [arrow] (start) -- (io);
+\draw [arrow] (io) -- (logic);
+\draw [arrow] (logic) -- (alg);
+\draw [arrow] (alg) -- (check);
+\draw [arrow] (check) -- node[anchor=south] {Tak} (save);
+\draw [arrow] (save) -- (stop);
+
+% Poprawiona pętla powrotna (omija schemat bokiem)
+\draw [arrow] (check.west) -- node[anchor=south, xshift=-0.5cm] {Nie   (Retry)} ++(-1.5,0) |- (alg.west);
+
+\end{tikzpicture}
+\end{center}
+
+\paragraph{Szczegółowa analiza potoku przetwarzania:}
+Przepływ danych w systemie został zaprojektowany w architekturze "Pipe and Filter", gdzie każdy etap stanowi krytyczny punkt kontrolny dla stabilności aplikacji:
+
+\begin{itemize}
+    \item \textbf{Inicjalizacja i CLI:} Program parsuje argumenty wejściowe. Błędy na tym etapie skutkują natychmiastowym przerwaniem pracy (Kod 1) i wyświetleniem instrukcji użytkowania.
+    \item \textbf{Parser I/O i Sanityzacja:} Najbardziej rozbudowany etap, w którym następuje czyszczenie danych (zamiana przecinków na kropki), sprawdzanie niedozwolonych znaków oraz mapowanie unikalnych identyfikatorów wierzchołków na wewnętrzne indeksy tablicowe.
+    \item \textbf{Weryfikacja Topologii:} Wykorzystanie algorytmu przeszukiwania w głąb (DFS) pozwala na odrzucenie grafów niespójnych, co jest kluczowe dla poprawności działania algorytmu Tutte'a.
+    \item \textbf{Rdzeń Obliczeniowy:} Realizacja wybranego algorytmu layoutu. W przypadku metody Fruchtermanna-Reingolda, proces ten jest stochastyczny i zintegrowany z pętlą sprawdzającą przecięcia krawędzi.
+    \item \textbf{Pętla Optymalizacyjna (Retry Logic):} System implementuje mechanizm automatycznego restartu obliczeń z nowymi parametrami startowymi. Jeśli test CCW (Counter-Clockwise) wykaże obecność przecięć, program wykonuje do 3000 prób w celu znalezienia konfiguracji planarnej.
+    \item \textbf{Eksport i Utrwalanie Danych:} Po uzyskaniu poprawnego layoutu, dane są konwertowane na format docelowy (tekstowy lub binarny) i zapisywane na dysku.
+\end{itemize}
+
+
+\section{System Diagnostyki (Kody Wyjścia)}
+Program komunikuje się z użytkownikiem poprzez ustandaryzowane kody powrotu:
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabularx}{\textwidth}{@{} l l X @{}}
+        \toprule
+        \textbf{Kod} & \textbf{Nazwa Błędu} & \textbf{Szczegóły Przyczyny} \\
+        \midrule
+        \textbf{1} & Argument Error & Brak flag -i/-o lub nieznany format wyjściowy. \\
+        \textbf{2} & Read Error & Błąd alokacji RAM lub problem z plikiem. \\
+        \textbf{3} & Path Error & Plik wejściowy nie istnieje pod wskazaną ścieżką. \\
+        \textbf{4} & Algorithm Error & Wybrano algorytm inny niż \textit{tutte/fruchterman}. \\
+        \textbf{5} & Empty File & Plik wejściowy jest pusty. \\
+        \textbf{6} & Size Error & Graf zbyt mały (wymagane $V \ge 3, E \ge 2$). \\
+        \textbf{7} & Planarity Error & Wykryto przecięcia po zakończeniu optymalizacji. \\
+        \textbf{8} & Connectivity Error & Graf niespójny (test DFS niezaliczony). \\
+        \textbf{9} & Format Error & Nieprawidłowy format danych w pliku wejściowym (format inny
+        niż txt lub bin). \\
+        \textbf{10} & Structure Error & Błędne znaki (diakrytyczne), pętle własne, błąd formatu. \\
+        \bottomrule
+    \end{tabularx}
+    \caption{Tabela diagnostyczna kodów powrotu.}
+\end{table}
+
+\section{Metodologia Testowania i Scenariusze Weryfikacyjne}
+
+Proces weryfikacji oprogramowania został podzielony na trzy główne obszary: testy poprawności formatu danych (I/O), testy topologiczne oraz testy stabilności numerycznej algorytmów. Łącznie opracowano bazę 15 scenariuszy testowych.
+
+\subsection{Walidacja Składniowa i Odporność modułu I/O}
+W ramach testów "Black-box" sprawdzono reakcję programu na błędy w plikach wejściowych. Moduł \texttt{io.c} został zweryfikowany pod kątem:
+\begin{itemize}[label=\textbullet]
+    \item \textbf{Zasady czystego tekstu:} Testy z użyciem polskich znaków diakrytycznych (ą, ę, ł itp.) oraz znaków specjalnych w nazwach krawędzi – program poprawnie zwraca Kod 10.
+    \item \textbf{Autokorekta separatorów:} Weryfikacja poprawności wczytywania wag przy użyciu przecinka zamiast kropki (test funkcji \textit{sanitize}).
+    \item \textbf{Sanityzacja linii:} Sprawdzenie zachowania przy napotkaniu linii pustych, nadmiarowych spacji oraz linii zaczynających się od znaku \texttt{\#}.
+\end{itemize}
+
+\subsection{Testy Topologiczne (Logika Grafowa)}
+Weryfikacja matematycznych założeń grafu prostego i planarnego:
+\begin{itemize}[label=\textbullet]
+    \item \textbf{Test Spójności:} Użycie grafów rozspójnionych (dwa osobne cykle) – potwierdzono poprawne działanie algorytmu DFS i przerwanie pracy z Kodem 9.
+    \item \textbf{Test Planarności ($K_5$ i $K_{3,3}$):} Wprowadzenie grafów pełnych o gęstości przekraczającej warunek Eulera ($E > 3V - 6$). Program skutecznie blokuje zapis layoutu (Kod 8).
+    \item \textbf{Test Rozmiaru Minimalnego:} Próba przetworzenia grafów o liczbie węzłów $V < 3$ – zwrócenie Kodu 6.
+\end{itemize}
+
+
+
+\subsection{Zestawienie Scenariuszy Testowych}
+W poniższej tabeli przedstawiono kluczowe przypadki testowe wykorzystane podczas prac rozwojowych:
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabularx}{\textwidth}{@{} l X c @{}}
+        \toprule
+        \textbf{Plik Testowy} & \textbf{Opis Scenariusza} & \textbf{Oczekiwany Wynik} \\
+        \midrule
+        \texttt{poprawny.txt} & Graf cykliczny $C_4$, poprawne dane. & Kod 0 (Sukces) \\
+        \texttt{err\_diakrytyczne.txt} & Nazwy krawędzi zawierające znaki: "krawędź\_1". & Kod 10 (Format Error) \\
+        \texttt{err\_niespojny.txt} & Dwa niepołączone trójkąty. & Kod 9 (Connectivity) \\
+        \texttt{err\_pusty.txt} & Plik o rozmiarze 0 bajtów. & Kod 5 (Empty File) \\
+        \texttt{err\_gestosc.txt} & Graf pełny $K_5$ (10 krawędzi, 5 węzłów). & Kod 8 (Planarity) \\
+        \texttt{test\_przecinki.txt} & Wagi zapisane w formacie "1,50". & Kod 0 (Autokorekta) \\
+        \texttt{err\_petla.txt} & Krawędź łącząca węzeł z samym sobą (U=V). & Kod 12 (Self-loop) \\
+        \bottomrule
+    \end{tabularx}
+    \caption{Wybrane przypadki testowe wykorzystane w procesie QA.}
+\end{table}
+
+\subsection{Wnioski z procesu testowania}
+Przeprowadzone testy wykazały, że program jest odporny na błędy typu "Human Error" przy tworzeniu plików tekstowych. Największą skuteczność wykazuje kaskadowy system walidacji, który odrzuca błędy strukturalne przed uruchomieniem kosztownych obliczeń algorytmicznych. Implementacja testu orientacji CCW w post-processingu daje 100\% pewność, że pliki wyjściowe zawierają wyłącznie layouty poprawne geometrycznie.
+\newpage
+\section{Podział prac w zespole}
+
+Projekt został podzielony tak, aby każda z osób mogła pracować nad swoimi modułami niezależnie, a następnie połączyć je w całość. Poniżej przedstawiamy faktyczny podział zadań przy realizacji programu i dokumentacji.
+
+\subsection{Tabela zadań}
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabularx}{\textwidth}{@{} l X l @{}}
+        \toprule
+        \textbf{Zadanie / Pliki} & \textbf{Zakres wykonanych prac} & \textbf{Osoba} \\
+        \midrule
+        \texttt{graph.h} & Opracowanie wspólnych struktur danych. & Aleksandra, Nella \\
+        \texttt{fruchterman.c/h} & Pełna implementacja algorytmu siłowego i fizyki. & Aleksandra \\
+        \texttt{tutte.c/h} & Pełna implementacja algorytmu Tutte'a. & Nella \\
+        \texttt{main.c} i \texttt{io.c/h} & Inicjalizacja plików, obsługa \texttt{getopt} i \texttt{help}. & Nella \\
+        \texttt{main.c} i \texttt{io.c/h} & Rozbudowa o walidację danych, parser, obsługę błędów i zapis BIN. & Aleksandra \\
+        \texttt{Makefile}, README & Przygotowanie skryptu kompilacji i instrukcji. & Nella \\
+        \texttt{Bugfixing} & Naprawa błędów logicznych, sprawdzanie planarności i spójności. & Aleksandra \\
+        Dokumentacja & Przygotowanie treści, opisów i skład w systemie LaTeX. & Aleksandra, Nella \\
+        \bottomrule
+    \end{tabularx}
+    \caption{Zestawienie prac wykonanych przez członków zespołu.}
+\end{table}
+
+\subsection{Opis wykonanych prac}
+
+\paragraph{Aleksandra Rybałko}
+Aleksandra skupiła się na części obliczeniowej i poprawności danych. Przygotowała plik nagłówkowy graph.h oraz w pełni zaimplementowała algorytm Fruchtermana. W modułach main i io odpowiadała za kluczowe elementy: parser (z obsługą zamiany przecinków na kropki), walidację wejścia oraz zapis wyników do plików tekstowych i binarnych. Zajęła się także końcową integracją kodu, usuwaniem błędów oraz dodaniem warunków sprawdzających planarność i spójność grafu. Przygotowała również zestaw plików testowych do weryfikacji działania programu.
+
+\paragraph{Nella Karczewicz}
+Nella stworzyła podstawy projektu: zaimplementowała algorytm Tutte’a oraz przygotowała szkielety plików main.c i io.c. Odpowiadała za techniczną stronę interfejsu CLI, wprowadzając obsługę flag przez getopt oraz opcję pomocy. Jest autorką Makefile i pliku README. Brała główny udział w tworzeniu dokumentacji — zwłaszcza części implementacyjnej i końcowej — oraz przygotowała zestaw plików testowych do sprawdzania poprawności działania programu.
+
+\paragraph{Zadania wspólne}
+Wspólnie prowadziłyśmy integrację modułów oraz projektowanie elastycznej struktury danych dla wierzchołków i krawędzi. Opracowałyśmy system zapisu wyników do plików tekstowych i binarnych oraz przeprowadziłyśmy debugowanie i optymalizację kodu, eliminując błędy logiczne i problemy z pamięcią.
+
+Równolegle pracowałyśmy nad dokumentacją, przygotowując opisy funkcjonalne i implementacyjne. Stworzyłyśmy też kompletną bazę scenariuszy testowych — poprawnościowych, odpornościowych i I/O — zapewniając stabilność działania programu.
+
+\section{Podsumowanie}
+Projekt dostarcza narzędzie do wizualizacji grafów planarnych, łączące podejście deterministyczne z heurystycznym. Największym wyzwaniem była implementacja odpornego parsera, który oprócz czyszczenia danych i ignorowania komentarzy wykonuje autokorektę separatorów dziesiętnych oraz rygorystyczną weryfikację typów, dzięki czemu poprawnie przetwarza także nietypowe pliki wejściowe. Istotnym elementem było również zapewnienie planarności layoutów: algorytm Tutte’a gwarantuje ją matematycznie, natomiast model Fruchtermanna‑Reingolda został rozszerzony o mechanizm „strażnika planarności”, który po każdej symulacji wykrywa kolizje krawędzi i w razie potrzeby restartuje obliczenia. Testy wykazały, że Tutte działa bardzo szybko i stabilnie, a FR — mimo większej złożoności — oferuje wyższą jakość wizualną i równomierny rozkład wierzchołków. W efekcie powstał system odporny na błędy i zapewniający przejrzyste, czytelne wyniki.
+
+\end{document}
