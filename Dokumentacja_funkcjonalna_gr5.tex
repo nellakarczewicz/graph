@@ -1,0 +1,238 @@
+\documentclass[12pt,a4paper]{article}
+
+% --- Pakiety dla języka polskiego ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage{tabularx} 
+\usepackage{booktabs} % Dla ładniejszych linii w tabelach
+\usepackage{listings} % Dla bloków kodu
+% --- Marginesy i formatowanie ---
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{enumitem} % Lepsza kontrola nad listami
+
+\title{Dokumentacja Funkcjonalna Projektu:\\ Generowanie Grafów Planarnych}
+\author{Aleksandra Rybałko, Nella Karczewicz}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Cel projektu}
+
+\subsection{Cel główny}
+Celem projektu jest implementacja programu w języku C, który automatycznie wyznacza współrzędne wierzchołków grafu planarnego w celu stworzenia jego przejrzystej i estetycznej wizualizacji. Aplikacja przyjmuje opis krawędzi grafu, a następnie, wykorzystując algorytmy \textbf{Fruchterman-Reingolda} oraz \textbf{Tutte’go}, oblicza pozycje $x$ i $y$ dla każdego węzła, dążąc do minimalizacji przecięć krawędzi. Następnie zapisuje wynik działania programu jako plik tekstowy lub binarny.
+
+\subsection{Podcele}
+Cele szczegółowe projektu obejmują następujące zadania:
+\begin{itemize}[label=---]
+    \item Wczytanie grafu z pliku tekstowego.
+    \item Wyznaczanie współrzędnych węzłów dla przystępnej i czytelnej wizualizacji grafu planarnego przedstawionego w postaci listy krawędzi poprzez implementację dwóch algorytmów: Fruchterman-Reingolda oraz Tutte.
+    \item Zapisanie wyniku działania programu jako pliku tekstowego lub binarnego (według wyboru użytkownika) zawierającego listę współrzędnych wierzchołków.
+\end{itemize}
+
+\subsection{Wymagania techniczne}
+Program został zaprojektowany zgodnie z poniższymi wymaganiami technicznymi:
+\begin{itemize}
+    \item Kod musi być zgodny z dobrymi praktykami programowania w języku C oraz powinien być elastyczny i przejrzysty.
+    \item Program powinien kompilować się przy użyciu kompilatora \texttt{GCC}.
+    \item Aplikacja w języku C jest sterowana jedynie z linii poleceń, przez argumenty i opcje.
+    \item Program wczytuje dane w formacie: \\
+    \texttt{<nazwa\_krawędzi> <wierzchołek\_A> <wierzchołek\_B> <waga\_krawędzi>}
+\end{itemize}
+
+\paragraph{Przykład wejścia:}
+\begin{verbatim}
+AB;1;2;1
+BC;2;3;1
+CD;3;4;1
+DB;4;2;1.407
+\end{verbatim}
+
+\paragraph{Przykład wyjścia:}
+Wynikiem działania jest plik (\texttt{txt} lub \texttt{bin}) o strukturze: \\
+\texttt{<wierzchołek> <współrzędna\_x> <współrzędna\_y>}
+\begin{verbatim}
+1;0.0;0.0
+2;1.0;0.0
+3;1.0;1.0
+4;0.0;1.0
+\end{verbatim}
+
+\section{Ogólne funkcje programu}
+Aplikacja odpowiada za wykonywanie następujących zadań:
+
+\begin{enumerate}
+    \item \textbf{Wczytywanie struktury grafu:} Program odczytuje dane wejściowe jako pliki tekstowe zawierające listę krawędzi wraz z ich wagami i buduje wewnętrzną reprezentację powiązań między węzłami.
+    \item \textbf{Automatyczne wyznaczanie współrzędnych:} Główna funkcja programu polegająca na zamianie listy połączeń w konkretne punkty na płaszczyźnie. Program dąży do optymalnego rozłożenia wierzchołków, minimalizując ich nakładanie się na siebie.
+    \item \textbf{Wybór algorytmu:} Użytkownik ma możliwość wskazania, który algorytm (Fruchterman-Reingolda lub Tutte) ma zostać użyty do obliczeń poprzez parametry wywołania.
+    \item \textbf{Zarządzanie formatami danych:} Konwersja danych wejściowych na ustandaryzowany format wyjściowy, umożliwiający późniejszą prezentację wyników w aplikacjach graficznych (np. w module Java).
+\end{enumerate}
+\section{Specyfikacja flag sterujących (CLI)}
+
+Program sterowany jest za pomocą argumentów przekazywanych w wierszu poleceń. Poniższa tabela przedstawia dopuszczalne flagi oraz zakresy ich parametrów:
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabularx}{\textwidth}{@{} l l l X @{}}
+        \toprule
+        \textbf{Flaga} & \textbf{Argument} & \textbf{Wartość} & \textbf{Opis funkcjonalny} \\
+        \midrule
+        \texttt{-i} & \texttt{<path>} & Ścieżka & Plik wejściowy. Lokalizacja pliku tekstowego z listą krawędzi. \\
+        \texttt{-o} & \texttt{<path>} & Ścieżka & Plik wyjściowy. Nazwa i lokalizacja pliku wynikowego. \\
+        \texttt{-alg} & \texttt{<id>} & 0 lub 1 & Wybór algorytmu. Pozwala na zmianę metody obliczeniowej. \\
+        \texttt{-f} & \texttt{<format>} & txt lub bin & Format zapisu. \texttt{txt}: tekstowy, \texttt{bin}: binarny. \\
+        \texttt{-n} & \texttt{<int>} & > 0 & Liczba iteracji. Precyzja procesu optymalizacji (domyślnie 500). \\
+        \texttt{-h} & brak & brak & Pomoc. Wyświetla instrukcję obsługi w konsoli. \\
+        \bottomrule
+    \end{tabularx}
+    \caption{Zestawienie parametrów wiersza poleceń.}
+\end{table}
+
+\subsection{Przykłady wywołania programu}
+
+Obliczenia standardowe (format tekstowy):
+\begin{verbatim}
+./graph_layout -i graf.txt -o wynik.txt -alg 0 -n 1000
+\end{verbatim}
+
+Obliczenia zoptymalizowane (format binarny):
+\begin{verbatim}
+./graph_layout -i graf.txt -o punkty.bin -alg 1 -f bin
+\end{verbatim}
+
+\subsection{Walidacja argumentów i danych wejściowych}
+
+Program przed rozpoczęciem fazy obliczeniowej przeprowadza weryfikację poprawności:
+
+\begin{itemize}[label=\textbullet]
+    \item \textbf{Kontrola obecności plików:} Program sprawdza, czy plik wejściowy podany po fladze \texttt{-i} fizycznie istnieje na dysku.
+    \item \textbf{Weryfikacja typów:} W przypadku podania wartości nieliczbowej dla parametru \texttt{-n} lub \texttt{-alg}, program przerywa działanie, wskazując błędny argument.
+    \item \textbf{Spójność danych:} Program weryfikuje, czy każda linia pliku wejściowego zawiera wymagane cztery kolumny danych.
+\end{itemize}
+\section{Specyfikacja formatów danych}
+
+\subsection{Format wejściowy (Import)}
+
+Program obsługuje import danych w formacie tekstowym opartym na strukturze \textbf{CSV/SSV}. Każda linia pliku wejściowego definiuje pojedynczą krawędź grafu i musi składać się z czterech kolumn:
+\begin{center}
+    \texttt{Nazwa\_krawędzi; Wierzchołek\_A; Wierzchołek\_B; Waga}
+\end{center}
+
+\paragraph{Szczegółowa walidacja pól i ograniczenia:}
+W celu zapewnienia stabilności fazy obliczeniowej, nałożono następujące restrykcje na dane wejściowe:
+
+\begin{itemize}[label=\textbullet]
+    \item \textbf{Nazwa krawędzi (string):} 
+        \begin{itemize}[label=---]
+            \item Maksymalna długość: \textbf{10 znaków} (optymalizacja pod limit 1000 krawędzi).
+            \item Dopuszczalne znaki: wyłącznie małe litery alfabetu łacińskiego (\texttt{a-z}) oraz cyfry.
+            \item Zabronione: spacje, wielkie litery, znaki specjalne oraz polskie znaki diakrytyczne (\texttt{ą, ę, ł} itd.).
+            \item Format: ciągły ciąg znaków bez przerw.
+        \end{itemize}
+    \item \textbf{Identyfikatory wierzchołków (int):} 
+        \begin{itemize}[label=---]
+            \item Typ: liczba całkowita dodatnia.
+            \item Maksymalna długość: \textbf{4 cyfry} (zakres do 9999, przy limicie 1000 unikalnych węzłów).
+            \item Zabronione: litery oraz znaki specjalne.
+        \end{itemize}
+    \item \textbf{Waga krawędzi (double):} 
+        \begin{itemize}[label=---]
+            \item Format: liczba dziesiętna z kropką jako separatorem.
+            \item Maksymalna długość zapisu: \textbf{4 znaki} (np. \texttt{1.00}).
+            \item Autokorekta: program automatycznie zamienia przecinek na kropkę przed procesem parsowania.
+        \end{itemize}
+\end{itemize}
+
+\paragraph{Zasady interpretacji separatorów i liczb:}
+Program stosuje elastyczne podejście do formatowania technicznego:
+\begin{itemize}[label=\textbullet]
+    \item \textbf{Separatory danych:} Jako rozdzielacz kolumn akceptowany jest średnik (\texttt{;}) lub przecinek (\texttt{,}).
+    \item \textbf{Białe znaki:} Dowolna liczba spacji i tabulatorów między kolumnami jest ignorowana.
+    \item \textbf{Standard EOL:} Obsługiwany jest standard \texttt{LF} (\texttt{\textbackslash n}) typowy dla systemów Unix/Linux.
+\end{itemize}
+
+\textit{Przykład poprawnego rekordu:} \texttt{krawedz12;102;105;1.50}
+\subsection{Format wyjściowy (Eksport)}
+
+Program generuje współrzędne wierzchołków w wybranym przez użytkownika formacie (\texttt{txt} lub \texttt{bin}).
+
+\subsubsection{Format tekstowy (TXT)}
+Dane wyjściowe są zapisywane w formacie kolumnowym, gdzie separatorem jest pojedyncza spacja. Każda linia reprezentuje docelowe położenie jednego węzła:
+\begin{center}
+    \texttt{ID\_Wierzchołka Współrzędna\_X Współrzędna\_Y}
+\end{center}
+
+\textit{Przykład pliku wynikowego:}
+\begin{verbatim}
+1;15.50;40.25
+2;10.00;5.12
+3;60.15;12.80
+\end{verbatim}
+
+\subsubsection{Format binarny (BIN)}
+W przypadku wyboru formatu binarnego (flaga \texttt{-f bin}), dane zapisywane są bez separatorów tekstowych w celu optymalizacji rozmiaru pliku i szybkości odczytu przez moduł wizualizacji. Struktura rekordu binarnego:
+\begin{itemize}
+    \item \texttt{int} (4 bajty) – ID wierzchołka.
+    \item \texttt{double} (8 bajtów) – Współrzędna X.
+    \item \texttt{double} (8 bajtów) – Współrzędna Y.
+\end{itemize}
+
+\subsection{Obsługa formatów niestandardowych}
+Program został wyposażony w mechanizm \textbf{ignorowania pustych linii} oraz linii zaczynających się od znaku hash (\texttt{\#}), co pozwala na dodawanie komentarzy wewnątrz plików z danymi grafu bez wpływu na proces obliczeniowy.
+
+\section{Sytuacje wyjątkowe i błędy}
+
+Program został zaprojektowany z myślą o odporności na błędne dane wejściowe oraz nieprawidłowe parametry wywołania. W przypadku wystąpienia sytuacji krytycznej, aplikacja przerywa działanie, wypisuje komunikat o błędzie na standardowe wyjście błędów (\texttt{stderr}) i zwraca odpowiedni kod powrotu do systemu operacyjnego.
+
+\subsection{Tabela kodów błędów}
+
+Poniższa tabela zawiera zestawienie komunikatów, ich przyczyn oraz przypisanych im kodów wyjścia:
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabularx}{\textwidth}{@{} l X c @{}}
+        \toprule
+        \textbf{Komunikat błędu (stderr)} & \textbf{Znaczenie i przyczyna} & \textbf{Kod powrotu} \\
+        \midrule
+        \texttt{Błąd: Nieprawidłowe flagi CLI} & Brak flag -i/-o, brak wymaganych argumentów lub użyto nieznanego formatu wyjściowego. & \textbf{1} \\
+        \addlinespace
+        \texttt{Błąd: Krytyczny błąd odczytu} & Błąd alokacji pamięci RAM podczas wczytywania lub niskopoziomowy problem z dostępem do pliku. & \textbf{2} \\
+        \addlinespace
+        \texttt{Błąd: Nie można otworzyć pliku} & Plik wejściowy nie istnieje pod wskazaną ścieżką lub brak uprawnień do odczytu. & \textbf{3} \\
+        \addlinespace
+        \texttt{Błąd: Nieznany algorytm} & Wybrano nazwę algorytmu inną niż dopuszczalne \textit{tutte} lub \textit{fruchterman}. & \textbf{4} \\
+        \addlinespace
+        \texttt{Błąd: Plik pusty} & Wskazany plik wejściowy nie zawiera żadnych danych do przetworzenia. & \textbf{5} \\
+        \addlinespace
+        \texttt{Błąd: Graf zbyt mały} & Graf posiada niewystarczającą liczbę elementów do poprawnego działania (wymagane $V \ge 3, E \ge 2$). & \textbf{6} \\
+        \addlinespace
+        \texttt{Błąd: Wynik nieplanarny} & Wykryto przecięcia krawędzi po zakończeniu procesu optymalizacji układu. & \textbf{7} \\
+        \addlinespace
+        \texttt{Błąd: Graf niespójny} & Test spójności DFS nie został zaliczony; graf składa się z niepołączonych składowych. & \textbf{8} \\
+        \addlinespace
+        \texttt{Błąd: Format wyjściowy} & Przekazano nieprawidłowy format zapisu danych (wymagany \textit{txt} lub \textit{bin}). & \textbf{9} \\
+        \addlinespace
+        \texttt{Błąd: Struktura danych} & Wykryto błędy w linii: pętle własne, niedozwolone znaki diakrytyczne lub zły format kolumn. & \textbf{10} \\
+        \bottomrule
+    \end{tabularx}
+    \caption{Specyfikacja obsługi błędów i kodów wyjścia.}
+\end{table}
+
+\subsection{Sposób raportowania}
+
+Wszystkie błędy są raportowane w ustandaryzowany sposób, co ułatwia automatyzację pracy z programem (np. przy użyciu skryptów Bash lub modułu nadrzędnego w Javie). Przykładowy format raportowania:
+
+\begin{quote}
+    \texttt{[FATAL ERROR]: Błąd: Nieprawidłowy format danych w linii 42. Oczekiwano wartości numerycznej.}
+\end{quote}
+
+\subsection{Zabezpieczenia algorytmiczne}
+Program implementuje mechanizm „bezpiecznika” (\textit{watchdog}), który przerywa obliczenia, jeśli po zadanej liczbie iteracji siły w modelu sprężynowym nie dążą do równowagi (zapobieganie pętlom nieskończonym przy specyficznych układach krawędzi).
+
+
+
+\end{document}
