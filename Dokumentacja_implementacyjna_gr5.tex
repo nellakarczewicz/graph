@@ -1,0 +1,737 @@
+\documentclass[12pt,a4paper]{article}
+
+% --- Pakiety dla języka polskiego ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=false,       % false: ramki; true: kolorowy tekst
+    pdfborder={0 0 0},     % ustawia szerokość ramki na 0 (całkowicie znika)
+}
+
+% --- Konfiguracja pakietu listings dla polskich znaków ---
+\title{Dokumentacja Implementacyjna Projektu: \\ Generowanie Grafów Planarnych}
+\author{Aleksandra Rybałko, Nella Karczewicz}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+% --- DODANY SPIS TREŚCI ---
+\tableofcontents
+\newpage
+% --------------------------
+
+% --- Konfiguracja pakietu listings dla polskich znaków ---
+\lstset{
+    backgroundcolor=\color{gray!5},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    captionpos=b,
+    commentstyle=\color{green!60!black},
+    keywordstyle=\color{blue},
+    stringstyle=\color{orange},
+    frame=single,
+    showstringspaces=false,
+    % Rozwiązanie problemu polskich znaków:
+    literate={ą}{{\k{a}}}1 {ć}{{\'c}}1 {ę}{{\k{e}}}1 {ł}{{\l{}}}1 {ń}{{\'n}}1 {ó}{{\'o}}1 {ś}{{\'s}}1 {ź}{{\'z}}1 {ż}{{\.z}}1
+             {Ą}{{\k{A}}}1 {Ć}{{\'C}}1 {Ę}{{\k{E}}}1 {Ł}{{\L{}}}1 {Ń}{{\'N}}1 {Ó}{{\'O}}1 {Ś}{{\'S}}1 {Ź}{{\'Z}}1 {Ż}{{\.Z}}1
+}
+
+
+
+\section{Cel i zakres implementacji}
+Celem niniejszej dokumentacji jest przedstawienie szczegółów technicznych oraz architektury programu napisanego w języku C, służącego do automatycznego rozmieszczania wierzchołków grafów planarnych. Implementacja koncentruje się na zapewnieniu stabilności obliczeń fizycznych, efektywnym zarządzaniu pamięcią oraz rygorystycznej walidacji danych wejściowych.
+
+\section{Architektura systemu i struktury danych}
+
+Aplikacja została zaprojektowana w oparciu o paradygmat programowania modularnego. Pozwala to na ścisłą separację logiki wczytywania danych, zarządzania strukturami oraz algorytmów rozmieszczania wierzchołków.
+
+\subsection{Podział na moduły funkcjonalne}
+Kod źródłowy został podzielony na niezależne jednostki logiczne, co ułatwia konserwację i niezależne testowanie komponentów:
+
+\begin{itemize}[label=\textbullet]
+    \item \textbf{\texttt{graph.h}:} Centralny moduł definicji struktur. Zawiera opisy typów \texttt{Node}, \texttt{Edge} oraz \texttt{Graph}, stanowiące wspólny interfejs dla całego systemu.
+    \item \textbf{\texttt{io.c / io.h}:} Moduł wejścia/wyjścia. Odpowiada za niskopoziomową obsługę plików, dwufazową walidację składniową, sanityzację danych oraz eksport wyników (TXT/BIN).
+    \item \textbf{\texttt{layout\_tutte.c / layout\_tutte.h}:} Implementacja deterministycznego algorytmu barycentrycznego oraz geometrycznych testów przecięć krawędzi (CCW).
+    \item \textbf{\texttt{fruchterman.c / fruchterman.h}:} Implementacja heurystycznego modelu siłowego wraz z mechanizmami grawitacji i chłodzenia układu.
+    \item \textbf{\texttt{main.c}:} Moduł sterujący. Zarządza logiką CLI (\textit{Command Line Interface}), koordynuje przepływ danych i realizuje pętlę wielokrotnych prób dla algorytmów probabilistycznych.
+\end{itemize}
+
+\subsection{Reprezentacja grafu w pamięci operacyjnej}
+Program wykorzystuje trzy kluczowe struktury zdefiniowane w pliku \texttt{graph.h}.
+
+\subsubsection{Wierzchołek (\texttt{Node})}
+Struktura ta przechowuje pełny stan fizyczny pojedynczego punktu:
+\begin{lstlisting}[language=C, caption={Struktura wierzchołka w graph.h}]
+typedef struct {
+    int id;          // Oryginalny identyfikator z pliku
+    double x, y;     // Aktualne współrzędne położenia
+    double dx, dy;   // Wektory sił (akumulatory przesunięcia)
+} Node;
+\end{lstlisting}
+\textbf{Analiza:} Zastosowanie pól \texttt{dx} i \texttt{dy} wewnątrz struktury pozwala na uniknięcie dodatkowych alokacji tablic pomocniczych podczas iteracji algorytmu Fruchtermanna, co znacząco poprawia wydajność procesora.
+
+\subsubsection{Krawędź (\texttt{Edge})}
+Krawędzie definiują relacje sąsiedztwa w grafie:
+\begin{lstlisting}[language=C, caption={Struktura krawędzi w graph.h}]
+typedef struct {
+    int u_idx;       // Indeks wierzchołka A w głównej tablicy
+    int v_idx;       // Indeks wierzchołka B w głównej tablicy
+    double weight;   // Waga połączenia
+} Edge;
+\end{lstlisting}
+\textbf{Analiza:} Przechowywanie indeksów (\texttt{u\_idx}, \texttt{v\_idx}) zamiast surowych identyfikatorów pozwala na dostęp do danych sąsiadów w czasie stałym $O(1)$, co jest niezbędne dla szybkości działania metody barycentrycznej.
+
+\subsubsection{Główny kontener (\texttt{Graph})}
+Agreguje wszystkie zasoby grafu w jednym obiekcie:
+\begin{lstlisting}[language=C, caption={Struktura grafu w graph.h}]
+typedef struct {
+    Node *nodes;      // Dynamiczna tablica wierzchołków
+    Edge *edges;      // Dynamiczna tablica krawędzi
+    int node_count;   // Liczba wczytanych wierzchołków
+    int edge_count;   // Liczba wczytanych krawędzi
+    double width;     // Szerokość obszaru (domyślnie 1000.0)
+    double height;    // Wysokość obszaru (domyślnie 1000.0)
+} Graph;
+\end{lstlisting}
+\newpage
+\subsection{Schemat przepływu danych i cykl życia programu}
+Proces przetwarzania danych jest zorganizowany w sposób kaskadowy, z wbudowanymi punktami kontrolnymi (tzw. "strażnikami"), które mogą przerwać wykonanie w przypadku wykrycia błędów krytycznych.
+
+\begin{enumerate}
+    \item \textbf{Inicjalizacja CLI:} Moduł \texttt{main.c} przetwarza argumenty użytkownika, określając ścieżki plików oraz wybór algorytmu.
+    \item \textbf{Walidacja Diagnostyczna:} Moduł \texttt{io.c} skanuje plik wejściowy bez alokacji struktur, raportując ewentualne błędy formatu w konkretnych liniach.
+    \item \textbf{Budowa Topologii:} Po sukcesie walidacji następuje dynamiczna alokacja pamięci w strukturze \texttt{Graph} i mapowanie identyfikatorów zewnętrznych na indeksy tablicy.
+    \item \textbf{Weryfikacja Topologiczna:} Program sprawdza spójność grafu (DFS) oraz potencjalną planarność (wzór Eulera).
+    \item \textbf{Obliczenia Geometryczne:} Wybrany moduł (\texttt{Tutte} lub \texttt{Fruchterman}) modyfikuje współrzędne \texttt{x, y} w strukturach \texttt{Node}.
+    \item \textbf{Eksport i Sprzątanie:} Wyniki są zapisywane do pliku, a pamięć dynamiczna jest zwalniana przez funkcję \texttt{free\_graph}.
+\end{enumerate}
+
+\section{Zarządzanie pamięcią i cykl życia obiektu}
+Program realizuje model bezpiecznego zarządzania pamięcią, dostosowując rozmiar struktur do rzeczywistej wielkości grafu.
+
+\subsection{Alokacja dynamiczna}
+Pamięć jest rezerwowana wewnątrz modułu \texttt{io.c} po zakończeniu fazy walidacji pliku:
+\begin{lstlisting}[language=C, caption={Alokacja w funkcji read\_graph}]
+g->edges = malloc(1000 * sizeof(Edge)); 
+g->nodes = calloc(1000, sizeof(Node));
+\end{lstlisting}
+\textbf{Analiza:} Wykorzystanie \texttt{calloc} gwarantuje domyślną inicjalizację pól zerem, co zapobiega błędom "garbage values" przy startowaniu symulacji fizycznej.
+
+\subsection{Zwalnianie zasobów}
+Za czyszczenie pamięci odpowiada funkcja \texttt{free\_graph}, wywoływana w każdym scenariuszu zakończenia pracy programu:
+\begin{lstlisting}[language=C, caption={Funkcja zwalniająca miejsce w pamięci}]
+void free_graph(Graph *g) {
+    if(g->nodes) free(g->nodes);
+    if(g->edges) free(g->edges);
+    g->nodes = NULL; 
+    g->edges = NULL;
+}
+\end{lstlisting}
+\section{Moduł wejścia/wyjścia i rygorystyczna walidacja danych}
+
+Moduł \texttt{io.c} stanowi fundament stabilności aplikacji. Jego zadaniem jest nie tylko odczyt danych, ale przede wszystkim ich filtracja, ujednolicenie oraz weryfikacja założeń topologicznych grafu przed etapem obliczeniowym.
+
+\subsection{Automatyczna detekcja formatu i separatorów}
+Program został wyposażony w inteligentny mechanizm rozpoznawania struktury pliku, co pozwala na obsługę różnych standardów zapisu danych (CSV, SSV).
+
+\begin{lstlisting}[language=C, caption={Funkcja detect\_separator}]
+static char detect_separator(const char *line) {
+    return (strchr(line, ';') == NULL && strchr(line, ',') != NULL) ? ',' : ';';
+}
+\end{lstlisting}
+\textbf{Wyjaśnienie logiki:} Funkcja analizuje surowy ciąg znaków w poszukiwaniu separatorów. Priorytetyzacja średnika nad przecinkiem zapobiega błędnej interpretacji w przypadku, gdy przecinek pełni rolę separatora dziesiętnego w wagach krawędzi.
+
+\subsection{Sanityzacja danych i obsługa błędów lokalizacji}
+Ze względu na różnice w zapisie liczb zmiennoprzecinkowych (kropka vs przecinek), zaimplementowano funkcję czyszczącą.
+
+\begin{lstlisting}[language=C, caption={Funkcja sanitize w io.c}]
+int sanitize(char *s) {
+    int changed = 0;
+    for (int i = 0; s[i]; i++) {
+        if (s[i] == ',') {
+            s[i] = '.';
+            changed = 1;
+        }
+    }
+    return changed;
+}
+\end{lstlisting}
+\textbf{Wyjaśnienie logiki:} Funkcja iteruje po napisie i zamienia każdy przecinek na kropkę. Jest to kluczowe dla poprawnego działania funkcji \texttt{sscanf}, która w standardzie C oczekuje kropki jako separatora dziesiętnego.
+\newpage
+\subsection{Zapis danych w formacie binarnym i tekstowym}
+Funkcja \texttt{save\_graph} pozwala na eksport współrzędnych w zależności od potrzeb użytkownika.
+\begin{lstlisting}[language=C, caption={Obsługa formatu binarnego w save\_graph}]
+if (strcmp(format, "bin") == 0) {
+    fwrite(&(g->node_count), sizeof(int), 1, f);
+    
+    fwrite(g->nodes, sizeof(Node), g->node_count, f);
+    }
+    \end{lstlisting}
+\textbf{Wyjaśnienie logiki:} W trybie binarnym dane są zapisywane bezpośrednio z pamięci RAM przy użyciu \texttt{fwrite}. Pozwala to na uniknięcie błędów zaokrągleń oraz drastycznie zmniejsza rozmiar pliku wyjściowego w porównaniu do zapisu tekstowego \texttt{fprintf}.
+
+
+\section{Założenia teoretyczne i walidacja topologiczna}
+
+Aby algorytmy rozmieszczania wierzchołków mogły wygenerować poprawny i czytelny rysunek, graf wejściowy musi spełniać określone założenia matematyczne. Program weryfikuje te warunki na etapie walidacji wstępnej, niezależnie od wybranego algorytmu.
+
+\subsection{Fundamenty teoretyczne: Struktura grafu, Spójność i Planarność}
+W celu zachowania stabilności obliczeń numerycznych oraz poprawności topologicznej, system operuje na tzw. \textbf{grafach prostych} i sprawdza ich kluczowe parametry:
+
+\begin{itemize}
+    \item \textbf{Wymóg grafu prostego:} Program automatycznie odrzuca \textbf{pętle własne} (połączenie wierzchołka z samym sobą) oraz ignoruje \textbf{krawędzie wielokrotne} (duplikaty między tymi samymi węzłami). Pętle własne uniemożliwiłyby działanie modelu siłowego ze względu na zerową odległość (dzielenie przez zero), a duplikaty zaburzałyby statyczną weryfikację planarności.
+    \item \textbf{Spójność (Connectivity):} Jest to warunek konieczny dla algorytmów siłowych i barycentrycznych. W grafie spójnym istnieje ścieżka między każdą parą wierzchołków. Brak spójności spowodowałby "nakładanie się" osobnych komponentów na siebie lub ich niekontrolowane rozbieganie się w obszarze roboczym pod wpływem sił odpychania.
+    \item \textbf{Planarność i wzór Eulera:} Graf jest planarny, jeśli można go narysować bez przecięć krawędzi. Wykorzystujemy tu wniosek z twierdzenia Eulera: dla grafu planarnego o $V \ge 3$ wierzchołkach, liczba krawędzi $E$ musi spełniać warunek $E \le 3V - 6$. Jest to pierwszy "strażnik" blokujący przetwarzanie zbyt gęstych danych.
+\end{itemize}
+\newpage
+\subsection{Weryfikacja spójności grafu (Algorytm DFS)}
+Zaimplementowano funkcję wykorzystującą przeszukiwanie w głąb (DFS) ze stosem, która zlicza odwiedzone węzły startując od pierwszego wczytanego punktu.
+
+\begin{lstlisting}[language=C, caption={Funkcja is\_graph\_connected}]
+int is_graph_connected(Graph *g) {
+    if (g->node_count <= 1) return 1;
+    int *visited = calloc(g->node_count, sizeof(int));
+    int *stack = malloc(g->node_count * sizeof(int));
+    int top = -1;
+
+    stack[++top] = 0; // Start od pierwszego wierzchołka
+    visited[0] = 1;
+    int visited_count = 1;
+
+    while (top >= 0) {
+        int u = stack[top--];
+        for (int i = 0; i < g->edge_count; i++) {
+            int v = -1;
+            if (g->edges[i].u_idx == u) v = g->edges[i].v_idx;
+            else if (g->edges[i].v_idx == u) v = g->edges[i].u_idx;
+
+            if (v != -1 && !visited[v]) {
+                visited[v] = 1;
+                stack[++top] = v;
+                visited_count++;
+            }
+        }
+    }
+    free(visited); free(stack);
+    return (visited_count == g->node_count);
+}
+\end{lstlisting}
+
+\textbf{Logika blokady:} Jeśli $visited\_count < g->node\_count$, graf jest niespójny. Program przerywa pracę z kodem błędu 9, co zapobiega generowaniu błędnych wyników.
+
+\subsection{Weryfikacja potencjalnej planarności (Wzór Eulera)}
+Drugim etapem walidacji wspólnej jest statyczne sprawdzenie gęstości grafu przed uruchomieniem kosztownych obliczeń fizycznych.
+
+\begin{lstlisting}[language=C, caption={Funkcja is\_potentially\_planar}]
+int is_potentially_planar(Graph *g) {
+    if (g->node_count <= 2) return 1;
+    return (g->edge_count <= (3 * g->node_count - 6));
+}
+\end{lstlisting}
+
+\textbf{Logika blokady:} Jeśli warunek nie zostanie spełniony, program informuje o braku potencjalnej planarności (kod błędu 7). Stanowi to filtr chroniący przed próbą siłowego rozmieszczania struktur, które matematycznie nie posiadają reprezentacji planarnej.
+% --- Sekcja 5: Algorytm Tutte'a ---
+\newpage
+\section{Algorytm Tutte'go – Deterministyczna Metoda Barycentryczna}
+
+Algorytm Tutte'go, znany również jako metoda barycentryczna, stanowi fundament deterministycznego podejścia do wizualizacji grafów planarnych. W przeciwieństwie do metod heurystycznych, algorytm ten opiera się na rozwiązaniu układu równań liniowych, co gwarantuje uzyskanie unikalnego i stabilnego wyniku dla danej topologii grafu.
+
+\subsection{Logika i podstawy matematyczne}
+Głównym założeniem algorytmu jest fakt, że każdy wierzchołek wewnętrzny powinien znajdować się w tzw. barycentrum (środku ciężkości) swoich sąsiadów. 
+
+Zgodnie z twierdzeniem Tutte'a, aby uzyskać ułożenie planarne (brak przecięć krawędzi), muszą zostać spełnione trzy warunki:
+\begin{enumerate}
+    \item Graf musi być planarny i trójspójny.
+    \item Wierzchołki zewnętrznej ściany grafu (rama) muszą tworzyć wielokąt wypukły.
+    \item Każdy wierzchołek wewnętrzny musi być połączony z co najmniej trzema innymi wierzchołkami.
+\end{enumerate}
+
+Pozycja każdego ruchomego wierzchołka $v_i$ jest wyznaczana jako średnia arytmetyczna pozycji jego sąsiadów:
+\[ x_i = \frac{1}{|Adj(v_i)|} \sum_{j \in Adj(v_i)} x_j, \quad y_i = \frac{1}{|Adj(v_i)|} \sum_{j \in Adj(v_i)} y_j \]
+
+\subsection{Implementacja procesu inicjalizacji}
+Pierwszym etapem algorytmu jest zdefiniowanie "kotwic" układu, czyli wierzchołków stałych, które nie podlegają procesowi relaksacji.
+
+\begin{lstlisting}[language=C, caption={Inicjalizacja ramy grafu w layout\_tutte.c}]
+void initialize_tutte_fixed_nodes(Graph *g) {
+    if (g->node_count < 3) return;
+
+    double centerX = g->width / 2.0;
+    double centerY = g->height / 2.0;
+    // Promień ramy dostosowany do wymiarów obszaru roboczego
+    double radius = (g->width < g->height ? g->width : g->height) / 3.0;
+
+    // Rozmieszczenie pierwszych 4 wierzchołków na obwodzie koła
+    for (int i = 0; i < 4 && i < g->node_count; i++) {
+        double angle = 2.0 * M_PI * i / 4.0;
+        g->nodes[i].x = centerX + radius * cos(angle);
+        g->nodes[i].y = centerY + radius * sin(angle);
+    }
+}
+\end{lstlisting}
+\textbf{Wyjaśnienie logiki:} Program rezerwuje indeksy $0-3$ jako wierzchołki zewnętrzne. Wykorzystanie funkcji \texttt{cos} i \texttt{sin} zapewnia idealnie symetryczne, wypukłe ułożenie startowe, co jest warunkiem koniecznym dla powodzenia algorytmu.
+
+\subsection{Iteracyjne rozwiązywanie układu (Metoda relaksacji)}
+Zamiast budować złożone macierze rzadkie, w projekcie zastosowano metodę relaksacji, która w sposób przybliżony dąży do stanu równowagi.
+
+\begin{lstlisting}[language=C, caption={Logika obliczania środka ciężkości}]
+for (int iter = 0; iter < 200; iter++) {
+    // Aktualizujemy tylko wierzchołki ruchome (od indeksu 4 wzwyż)
+    for (int i = 4; i < g->node_count; i++) {
+        double sum_x = 0, sum_y = 0;
+        int neighbors_count = 0;
+
+        // Przeszukiwanie listy krawędzi w celu znalezienia sąsiadów wierzchołka i
+        for (int j = 0; j < g->edge_count; j++) {
+            int neighbor_idx = -1;
+            if (g->edges[j].u_idx == i) neighbor_idx = g->edges[j].v_idx;
+            else if (g->edges[j].v_idx == i) neighbor_idx = g->edges[j].u_idx;
+
+            if (neighbor_idx != -1) {
+                sum_x += g->nodes[neighbor_idx].x;
+                sum_y += g->nodes[neighbor_idx].y;
+                neighbors_count++;
+            }
+        }
+        // Przesunięcie wierzchołka do barycentrum jego sąsiedztwa
+        if (neighbors_count > 0) {
+            g->nodes[i].x = sum_x / neighbors_count;
+            g->nodes[i].y = sum_y / neighbors_count;
+        }
+    }
+}
+\end{lstlisting}
+\textbf{Wyjaśnienie logiki:} Pętla zewnętrzna wykonuje 200 iteracji, co empirycznie dobrano jako wartość zapewniającą stabilizację wizualną grafu. Wewnątrz, dla każdego węzła ruchomego, program sumuje pozycje sąsiadów i wyciąga średnią. Jeśli wierzchołek nie posiada sąsiadów (\texttt{neighbors\_count == 0}), pozostaje w miejscu, co zapobiega błędom dzielenia przez zero.
+\newpage
+% --- Sekcja 6: Fruchterman-Reingold ---
+% --- Sekcja 6: Fruchterman-Reingold ---
+\section{Algorytm Fruchterman-Reingold – Heurystyka Siłowa}
+
+Algorytm Fruchterman-Reingold opiera się na analogii fizycznej, w której wierzchołki traktowane są jak cząsteczki atomowe, a krawędzie jak sprężyny.
+
+\subsection{Logika oddziaływań fizycznych}
+Głównym celem algorytmu jest znalezienie konfiguracji o najniższej energii. Kluczowym parametrem jest stała optymalnej odległości $k$:
+\[ k = \sqrt{\frac{Width \cdot Height}{|V|}} \]
+.
+
+\subsection{Specyfika implementacji i dążenie do planarności}
+W klasycznym ujęciu algorytm ten jest heurystyką estetycznego rozmieszczania, która dąży do równomiernego rozłożenia węzłów, ale nie gwarantuje uzyskania układu planarnego. W niniejszym projekcie algorytm został jednak rozbudowany o mechanizmy wymuszające bezkolizyjność:
+
+\begin{itemize}
+    \item \textbf{Zastosowanie grawitacji:} Dodanie wektora siły dociągającej do środka zapobiega nadmiernemu rozproszeniu wierzchołków.
+    \item \textbf{Wielokrotne losowe starty:} Zaimplementowano pętlę \textit{Retry Logic} (do 3000 prób), co pozwala na uniknięcie lokalnych minimów energetycznych.
+    \item \textbf{Weryfikacja testem przecięć:} Program uznaje działanie za zakończone sukcesem dopiero po uzyskaniu statusu \texttt{is\_layout\_planar == 1}.
+\end{itemize}
+
+\subsection{Implementacja sił odpychania i grawitacji}
+W przeciwieństwie do sił przyciągania, siły odpychania działają na każdą parę wierzchołków w grafie, co nadaje algorytmowi złożoność $O(V^2)$.
+
+\begin{lstlisting}[language=C, caption={Obliczanie sumarycznych wektorów sił}]
+// 1. ODPYCHANIE: Każdy wierzchołek odpycha się od każdego innego
+for (int i = 0; i < graph->node_count; i++) {
+    graph->nodes[i].dx = 0; // Resetowanie wektora przesunięcia
+    graph->nodes[i].dy = 0;
+
+    // Grawitacja: słaba siła dociągająca wierzchołek do środka ekranu
+    double dx_center = centerX - graph->nodes[i].x;
+    double dy_center = centerY - graph->nodes[i].y;
+    graph->nodes[i].dx += dx_center * 0.05; 
+    graph->nodes[i].dy += dy_center * 0.05;
+
+    for (int j = 0; j < graph->node_count; j++) {
+        if (i == j) continue;
+        double vx = graph->nodes[i].x - graph->nodes[j].x;
+        double vy = graph->nodes[i].y - graph->nodes[j].y;
+        \end{lstlisting}
+        \begin{lstlisting}
+        double dist = sqrt(vx * vx + vy * vy);
+
+        if (dist < 0.01) dist = 0.01; // Unikanie osobliwości przy dist=0
+
+        double force = (k * k) / dist; // f_r(d) = k^2 / d
+        graph->nodes[i].dx += (vx / dist) * force;
+        graph->nodes[i].dy += (vy / dist) * force;
+    }
+}
+\end{lstlisting}
+\textbf{Wyjaśnienie logiki:} Wektory \texttt{dx} i \texttt{dy} pełnią rolę akumulatorów sił. Dodanie grawitacji (siła dociągająca do środka) zapobiega "rozlatywaniu się" niespójnych komponentów grafu poza obszar roboczy.
+
+\subsection{Mechanizm chłodzenia (Simulated Annealing)}
+Aby układ mógł "zastygnąć" w stabilnej pozycji, wprowadzono parametr temperatury $t$, który ogranicza maksymalne przemieszczenie wierzchołka w jednej iteracji.
+
+\begin{lstlisting}[language=C, caption={Aktualizacja pozycji i chłodzenie}]
+for (int i = 0; i < graph->node_count; i++) {
+    double disp_dist = sqrt(graph->nodes[i].dx * graph->nodes[i].dx + 
+                           graph->nodes[i].dy * graph->nodes[i].dy);
+
+    if (disp_dist > 0) {
+        // Ograniczenie przesunięcia aktualną temperaturą t
+        double limited_dist = (disp_dist < t) ? disp_dist : t;
+        graph->nodes[i].x += (graph->nodes[i].dx / disp_dist) * limited_dist;
+        graph->nodes[i].y += (graph->nodes[i].dy / disp_dist) * limited_dist;
+    }
+    // (...) ograniczenie do ramki obszaru
+}
+t *= 0.95; // Stopniowe chłodzenie systemu o 5% w każdym kroku
+\end{lstlisting}
+\textbf{Wyjaśnienie logiki:} Temperatura początkowa jest wysoka, co pozwala wierzchołkom na duże skoki i wyjście z lokalnych minimów energetycznych. Z każdą iteracją temperatura maleje (\texttt{t *= 0.95}), co powoduje, że graf staje się coraz bardziej "sztywny" i stabilny.
+
+
+\newpage
+
+\section{Scenariusze testowe}
+
+W celu potwierdzenia niezawodności aplikacji przeprowadzono serię testów systemowych. Dokumentacja zestawia fragmenty plików wejściowych z logami z terminala, co pozwala na precyzyjną weryfikację logiki walidacyjnej modułu \texttt{io.c}.
+
+\subsection{Szczegółowa analiza przypadków testowych (Pliki .txt)\\}
+
+\subsubsection{Brak planarności – zbyt duża gęstość (\texttt{err\_gestosc.txt})}
+W tej części testów poddano weryfikacji skuteczność mechanizmów kontrolnych programu w sytuacji, gdy wprowadzony graf jest matematycznie nieplanarny. W wyniku mamy porównanie, w jaki sposób obie zaimplementowane metody Tutta oraz Fruchtermana – reagują na brak możliwości uzyskania bezkolizyjnego ułożenia.
+\begin{lstlisting}[language=bash, caption={Log terminala - wynik działania algorytmu Tutte}]
+Uruchamiam algorytm Tutte...
+
+Sprawdzanie planarności wygenerowanego układu (Tutte)...
+
+============================================================
+   PORAŻKA: WYNIK TUTTE NIE JEST PLANARNY    
+============================================================
+Zapis pliku został zablokowany.
+
+
+\end{lstlisting}
+\begin{lstlisting}[language=bash, caption={Log terminala - wynik działania algorytmu Fruchtermana}]
+Uruchamiam symulację Fruchtermana (max 3000 prób)...
+
+Sprawdzanie planarności wygenerowanego układu (Fruchterman)...
+
+============================================================
+   KOMUNIKAT: NIE ZNALEZIONO UKŁADU PLANARNEGO    
+============================================================
+Po 3000 prób algorytm FR nie wyeliminował przecięć.
+Zapis pliku wyjściowego anulowany. Spróbuj ponownie.
+
+
+\end{lstlisting}
+\newpage
+\subsubsection{Błędny format danych (\texttt{err\_litera.txt})}
+Test sprawdza odporność walidatora na znaki niebędące cyframi w polach numerycznych (U, V, Waga).
+
+\textbf{Fragment struktury:}
+\begin{verbatim}
+krawedz1;1;2x;1.O
+krawedz2;2;X;1.5
+krawedz3;3;4;0.8
+\end{verbatim}
+
+\begin{lstlisting}[language=bash, caption={Log terminala - wykrycie liter}]
+Uruchamiam przetwarzanie...
+
+===============================================================
+ RAPORT ANALIZY DANYCH WEJSCIOWYCH 
+===============================================================
+Linia    | Zinterpretowane dane                          | Status         
+---------------------------------------------------------------
+
+1        | [ !!! BŁĄD KRYTYCZNY - ZŁY FORMAT !!! ]    | BŁĄD         
+2        | [ !!! BŁĄD KRYTYCZNY - ZŁY FORMAT !!! ]    | BŁĄD         
+3        | Krawedz krawedz3: 3 -> 4 (w: 0.8)            | [OK]           
+===============================================================
+
+STOP! Znaleziono 2 bledow krytycznych w strukturze pliku.
+ -> INFO: Poprawny format to: Nazwa;U;V;Waga
+ -> Separator danych to ŚREDNIK (;), a separator dziesiętny to KROPKA (.)
+ -> ID wierzchołków muszą mieścić się w przedziale od 1 do 1000.
+ -> Waga musi być dodatnia, z jednym miejscem po kropce.
+
+===============================================================
+   PRZETWARZANIE PRZERWANE: BŁĘDNA STRUKTURA GRAFU    
+===============================================================
+Powód: Wykryto błędy w strukturze grafu (np. niepoprawny format 
+lub niedozwolone pętle własne). Sprawdź raport powyżej i popraw
+plik wejściowy.
+===============================================================
+
+
+\end{lstlisting}
+\newpage
+\subsubsection{Minimalna liczba wierzchołków (\texttt{err\_za\_maly.txt})}
+Algorytm Tutte'a wymaga minimum 3 węzłów do stworzenia ramy. Test sprawdza blokadę dla zbyt małych struktur.
+
+\textbf{Fragment struktury:}
+\begin{verbatim}
+k1;1;2;1.0
+\end{verbatim}
+
+\begin{lstlisting}[language=bash, caption={Log terminala - za mały graf}]
+Uruchamiam przetwarzanie...
+
+===============================================================
+ RAPORT ANALIZY DANYCH WEJSCIOWYCH 
+===============================================================
+Linia    | Zinterpretowane dane                          | Status         
+---------------------------------------------------------------
+1        | Krawedz k1: 1 -> 2 (w: 1.0)                  | [OK]           
+===============================================================
+
+Wczytywanie zakończone sukcesem. Dane są poprawne technicznie.
+Statystyki: 2 węzłów, 1 krawędzi.
+---------------------------------------------------------------
+
+============================================================
+   BŁĄD: NIEWYSTARCZAJĄCA LICZBA ELEMENTÓW GRAFU
+============================================================
+Statystyki wczytanego pliku:
+-> Wierzchołki: 2 (wymagane >= 3)
+-> Krawędzie:   1 (wymagane >= 2)
+
+POWÓD: Graf jest zbyt mały, aby wyznaczyć układ planarny.
+Upewnij się, że plik [testy_N/err_za_maly.txt] zawiera poprawny graf.
+
+============================================================
+
+\end{lstlisting}
+\newpage
+\subsubsection{Niespójność grafu (\texttt{err\_niespojny.txt})}
+Weryfikacja algorytmu DFS. Program musi wykryć, że graf składa się z kilku niepołączonych komponentów.
+
+\textbf{Fragment struktury:}
+\begin{verbatim}
+k1;1;2;1.0
+k2;2;3;1.0
+k3;4;5;1.0
+\end{verbatim}
+
+\begin{lstlisting}[language=bash, caption={Log terminala - graf niespójny}]
+Sprawdzanie spójności grafu za pomocą algorytmu DFS ...
+
+============================================================
+   BŁĄD KRYTYCZNY: GRAF NIESPÓJNY    
+============================================================
+Dane z pliku wejściowego [testy_N/err_niespojny.txt] są błędne:
+-> Graf składa się z kilku niepołączonych ze sobą części.
+-> Algorytm wymaga grafu spójnego, aby poprawnie wyznaczyć pozycje.
+============================================================
+
+\end{lstlisting}
+\subsubsection{Autokorekta separatora dziesiętnego (\texttt{test\_autokorekta.txt})}
+Weryfikacja funkcji \texttt{sanitize}, która zamienia przecinki na kropki, umożliwiając poprawny odczyt wag przez \texttt{sscanf}.
+
+\textbf{Fragment struktury:} \begin{verbatim}
+krawedz1;1;2;1,5
+krawedz2;2;3;2,7
+krawedz3;3;1;0,9
+\end{verbatim}
+
+\begin{lstlisting}[language=bash, caption={Log terminala - INFO: Dokonano autokorekt}]
+Uruchamiam przetwarzanie...
+
+===============================================================
+ RAPORT ANALIZY DANYCH WEJSCIOWYCH 
+===============================================================
+Linia    | Zinterpretowane dane               | Status         
+---------------------------------------------------------------
+1        | Krawedz krawedz1: 1 -> 2 (w: 1.50) | [Poprawiono ,] 
+2        | Krawedz krawedz2: 2 -> 3 (w: 2.70) | [Poprawiono ,] 
+3        | Krawedz krawedz3: 3 -> 1 (w: 0.90) | [Poprawiono ,] 
+===============================================================
+INFO: Dokonano 3 autokorekt separatora dziesiętnego.
+
+Wczytywanie zakończone sukcesem. Dane są poprawne technicznie.
+Statystyki: 3 węzłów, 3 krawędzi.
+---------------------------------------------------------------
+
+\end{lstlisting}
+\newpage
+
+\subsubsection{Obsługa pustych linii i białych znaków (\texttt{test\_puste.txt})}
+Parser musi ignorować wiersze niezawierające danych, aby nie przerywać procesu wczytywania grafu.
+\textbf{Fragment struktury:} \begin{verbatim}
+k1;1;2;1.0
+
+k2;2;3;1.5
+
+k3;3;1;0.8
+\end{verbatim}
+\begin{lstlisting}[language=bash, caption={Log terminala - pomijanie pustych linii}]
+Uruchamiam przetwarzanie...
+
+===============================================================
+ RAPORT ANALIZY DANYCH WEJSCIOWYCH 
+===============================================================
+Linia    | Zinterpretowane dane                          | Status         
+---------------------------------------------------------------
+1        | Krawedz k1: 1 -> 2 (w: 1.00)                  | [OK]           
+2       | [INFO] Pominięto pustą linię.
+3        | Krawedz k2: 2 -> 3 (w: 1.50)                  | [OK]           
+4       | [INFO] Pominięto pustą linię.
+5        | Krawedz k3: 3 -> 1 (w: 0.80)                  | [OK]           
+===============================================================
+Linia 2: [INFO] Napotkano pustą linię - pomijam.
+Linia 4: [INFO] Napotkano pustą linię - pomijam.
+
+Wczytywanie zakończone sukcesem. Dane są poprawne technicznie.
+Statystyki: 3 węzłów, 3 krawędzi.
+---------------------------------------------------------------
+
+\end{lstlisting}
+\subsection{Pozostałe zweryfikowane mechanizmy}
+
+Poza testami opartymi na plikach tekstowych, aplikacja została poddana weryfikacji funkcjonalnej w następujących obszarach:
+
+\begin{itemize}
+    \item \textbf{Parametry CLI}: Sprawdzono reakcję na brak flag \texttt{-i}, \texttt{-o} oraz wpisanie nieistniejących algorytmów. Program każdorazowo przerywa pracę i wyświetla instrukcję obsługi \texttt{Usage}.
+    \item \textbf{Logika struktur danych}: Przetestowano mechanizm odrzucania duplikatów krawędzi oraz ignorowania pętli własnych, co zapewnia stabilność obliczeniową.
+    \item \textbf{Formaty wyjściowe}: Zweryfikowano poprawność zapisu binarnego (\texttt{.bin}) oraz tekstowego przy użyciu funkcji \texttt{save\_graph}.
+    \item \textbf{Bezpieczeństwo I/O}: Program poprawnie identyfikuje brak pliku wejściowego (Kod 2) oraz brak uprawnień do zapisu.
+\end{itemize}
+
+\subsection{Test pozytywny – wzorcowy przebieg algorytmów: Tutte'a oraz Fruchtermanna}
+
+Do weryfikacji pełnej ścieżki krytycznej programu użyto poprawnego, spójnego grafu planarnego (cykl o 3 wierzchołkach). Poniżej przedstawiono wyniki testów dla obu zaimplementowanych metod rozmieszczania.
+
+\textbf{Zawartość pliku wejściowego (\texttt{poprawny\_plik.txt}):}
+\begin{verbatim}
+K1;1;2;1.0
+K2;2;3;1.0
+K3;3;1;1.0
+\end{verbatim}
+
+\subsubsection{Logi z konsoli (Przebieg operacji)}
+Poniższe listingi przedstawiają raporty walidacyjne oraz potwierdzenie sukcesu obliczeń dla obu dostępnych silników graficznych.
+
+\begin{lstlisting}[language=bash, caption={Przebieg programu dla algorytmu Tutte'a (metoda deterministyczna)}]
+Uruchamiam przetwarzanie...
+
+===============================================================
+ RAPORT ANALIZY DANYCH WEJSCIOWYCH 
+===============================================================
+Linia    | Zinterpretowane dane                          | Status         
+---------------------------------------------------------------
+1        | Krawedz k1: 1 -> 2 (w: 1.00)                  | [OK]           
+2        | Krawedz k2: 2 -> 3 (w: 1.00)                  | [OK]           
+3        | Krawedz k3: 3 -> 1 (w: 1.00)                  | [OK]           
+===============================================================
+
+Wczytywanie zakończone sukcesem. Dane są poprawne technicznie.
+Statystyki: 3 węzłów, 3 krawędzi.
+---------------------------------------------------------------
+
+Sprawdzanie spójności grafu za pomocą algorytmu DFS ...
+Sukces: Graf jest spójny. Przechodzę do obliczeń.
+
+Uruchamiam algorytm Tutte...
+
+Sprawdzanie planarności wygenerowanego układu (Tutte)...
+Sukces! Graf planarny (Tutte).
+
+---------------------------------------------------------------
+>>> SUKCES: Wynik został zapisany do pliku [wynik.txt] <<<
+>>> INFO: Nie podano parametru -f bin. Zapisano domyślnie jako plik TEKSTOWY (.txt) <<<
+\end{lstlisting}
+\newpage
+\begin{lstlisting}[language=bash, caption={Przebieg programu dla algorytmu Fruchtermanna-Reingolda (metoda siłowa)}]
+Uruchamiam przetwarzanie...
+
+===============================================================
+ RAPORT ANALIZY DANYCH WEJSCIOWYCH 
+===============================================================
+Linia    | Zinterpretowane dane                          | Status         
+---------------------------------------------------------------
+1        | Krawedz k1: 1 -> 2 (w: 1.00)                  | [OK]           
+2        | Krawedz k2: 2 -> 3 (w: 1.00)                  | [OK]           
+3        | Krawedz k3: 3 -> 1 (w: 1.00)                  | [OK]           
+===============================================================
+
+Wczytywanie zakończone sukcesem. Dane są poprawne technicznie.
+Statystyki: 3 węzłów, 3 krawędzi.
+---------------------------------------------------------------
+
+Sprawdzanie spójności grafu za pomocą algorytmu DFS ...
+Sukces: Graf jest spójny. Przechodzę do obliczeń.
+
+Uruchamiam symulację Fruchtermana (max 3000 prób)...
+
+Sprawdzanie planarności wygenerowanego układu (Fruchterman)...
+Sukces! Graf planarny (Fruchterman). Wygenerowany po 1 probach.
+
+---------------------------------------------------------------
+>>> SUKCES: Wynik został zapisany do pliku [wynik.txt] <<<
+>>> INFO: Nie podano parametru -f bin. Zapisano domyślnie jako plik TEKSTOWY (.txt) <<<
+\end{lstlisting}
+\newpage
+\section{Interpretacja wyników i wnioski}
+
+\subsection{Algorytm Tutte’a (Deterministyczny)}
+\begin{itemize}
+    \item \textbf{Determinizm obliczeniowy:} Uzyskanie identycznych współrzędnych w każdej próbie (np. ID 1: 833.33, 500.00) potwierdza, że algorytm poprawnie rozwiązuje układ równań liniowych, dążąc do jedynego rozwiązania optymalnego.
+    \item \textbf{Geometria układu:} Rozłożenie wierzchołków na planie trójkąta (rama wypukła) jest zgodne z założeniami teoretycznymi dla grafów o małej liczbie węzłów, gwarantując brak przecięć krawędzi wewnątrz ramy.
+    \item \textbf{Sprawność modułów:} Poprawna struktura współrzędnych w pliku wynikowym potwierdza bezbłędną komunikację między modułem matematycznym a eksporterem danych.
+\end{itemize}
+
+\begin{lstlisting}[language={}, caption={Wynik algorytmu Tutte'a (zawsze powtarzalny)}]
+1 833.33 500.00
+2 500.00 833.33
+3 166.67 500.00
+\end{lstlisting}
+
+\subsection{Algorytm Fruchtermana-Reingolda (Stochastyczny)}
+\begin{itemize}
+    \item \textbf{Niedeterminizm pożądany:} Zmienność wyników (np. X=195.03 vs X=555.27 dla ID 1) potwierdza poprawne działanie mechanizmu stochastycznego i inicjalizacji losowej pozycji wierzchołków.
+    \item \textbf{Minimalizacja energii:} Uzyskanie czytelnego układu przy różnych współrzędnych dowodzi, że algorytm skutecznie odnajduje lokalne minima energii układu sił przyciągania i odpychania.
+    \item \textbf{Zgodność z modelem:} Proces symulacji fizycznej przebiega zgodnie z założeniami modelu siłowego, oferując elastyczne i estetyczne rozmieszczenie grafu.
+\end{itemize}
+
+\begin{lstlisting}[language={}, caption={Wynik Fruchtermana - Proba 1}]
+1 195.03 370.56
+2 540.33 829.28
+3 764.95 300.88
+\end{lstlisting}
+
+\begin{lstlisting}[language={}, caption={Wynik Fruchtermana - Proba 2}]
+1 555.27 826.83
+2 755.76 288.82
+3 189.58 384.19
+\end{lstlisting}
+
+
+
+
+\subsection{Odporność systemu i walidacja}
+\begin{itemize}
+    \item \textbf{Wielowarstwowa walidacja:} Program skutecznie filtruje dane na trzech poziomach:
+        \begin{itemize}
+            \item \textbf{Syntaktycznym:} Blokada znaków ASCII, spacji i błędnych nazw.
+            \item \textbf{Semantycznym:} Kontrola zakresów ID (1--1000) oraz wag (0.1--100.0).
+            \item \textbf{Topologicznym:} Weryfikacja spójności grafu algorytmem DFS.
+        \end{itemize}
+    \item \textbf{Stabilność:} Mechanizmy obronne eliminują ryzyko wystąpienia błędów krytycznych (np. \textit{segmentation fault}) przy podaniu uszkodzonych plików.
+    \item \textbf{Autokorekta:} Moduł \textit{sanitize} poprawnie normalizuje dane (zamiana przecinków na kropki), zwiększając tolerancję na błędy wprowadzania.
+\end{itemize}
+
+\subsection{Porównanie i konkluzje końcowe}
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|p{5cm}|p{5cm}|}
+\hline
+\textbf{Cecha} & \textbf{Algorytm Tutte’a} & \textbf{Algorytm Fruchtermana} \\ \hline
+\textbf{Powtarzalność} & Całkowita (determinizm) & Brak (wynik zależny od losowania) \\ \hline
+\textbf{Zaleta} & Gwarancja planarności, szybkość & Naturalny i estetyczny układ \\ \hline
+\textbf{Zastosowanie} & Grafy o sztywnej strukturze & Dowolne grafy spójne \\ \hline
+\end{tabular}
+\end{table}
+
+\textbf{Wniosek końcowy:} Przeprowadzone testy potwierdzają pełną sprawność oprogramowania. Program jest odporny na błędy użytkownika, a zaimplementowane algorytmy realizują swoje cele matematyczne i wizualne zgodnie ze specyfikacją projektową.
+
+\subsection{Wnioski z testów}
+Przeprowadzone testy potwierdzają, że program jest odporny na błędy użytkownika oraz nieprawidłowe formatowanie danych. Wielowarstwowa walidacja (od znaków ASCII po spójność topologiczną) gwarantuje, że algorytmy pracują na poprawnych danych.
+
+\end{document}
